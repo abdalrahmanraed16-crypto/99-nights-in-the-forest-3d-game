@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>99 Nights in the Forest — Same WiFi Co-op</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#05070d;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  canvas{display:block;position:absolute;inset:0}
+  .overlay{
+    position:fixed;inset:0;z-index:10;
+    background:radial-gradient(circle at 50% 30%,rgba(20,30,50,0.95),rgba(0,0,0,0.99));
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:20px;text-align:center;
+  }
+  .overlay.hidden{display:none}
+  h1{font-size:clamp(18px,5.5vw,26px);margin-bottom:6px;letter-spacing:2px;color:#ffe9a8}
+  h2{font-size:clamp(15px,4.5vw,19px);margin-bottom:10px;color:#8fb6ff;letter-spacing:1px}
+  .subtitle{color:#889;margin-bottom:22px;font-size:clamp(11px,3.2vw,13px)}
+  button{
+    font-family:inherit;font-size:clamp(12px,3.6vw,14px);
+    padding:12px 22px;margin:6px;
+    background:linear-gradient(180deg,#2a3550,#1a2030);
+    color:#fff;border:1.5px solid #4fa8ff;border-radius:8px;
+    cursor:pointer;min-width:min(250px,80vw);transition:all 0.15s;
+  }
+  button:hover{background:linear-gradient(180deg,#3a4560,#2a3040)}
+  button:active{transform:scale(0.97)}
+  button.secondary{border-color:#ff8a4f;min-width:120px}
+  input[type="text"]{
+    font-family:inherit;font-size:14px;padding:9px 12px;
+    background:#0a0f1a;color:#fff;border:1px solid #2a3550;border-radius:6px;
+    width:min(260px,80vw);outline:none;
+  }
+  input[type="text"]:focus{border-color:#4fa8ff}
+  .step{color:#99a;font-size:clamp(10px,3vw,12px);margin-top:8px;letter-spacing:0.5px}
+  .status{color:#8fb6ff;font-size:13px;margin-top:14px;min-height:18px}
+  .status.error{color:#ff7a7a}
+  .status.ok{color:#7affa0}
+  .url-box{
+    background:#0a0f1a;border:1px solid #2a3550;border-radius:6px;
+    padding:8px 12px;font-size:11px;color:#b8d8ff;margin:8px 0;
+    max-width:90vw;word-break:break-all;
+  }
+  .hidden{display:none!important}
+  .spinner{
+    display:inline-block;width:14px;height:14px;border:2px solid #4fa8ff;
+    border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;
+    vertical-align:middle;margin-right:6px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #topBtns{
+    position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));
+    z-index:7;display:none;gap:8px;
+  }
+  #topBtns.on{display:flex}
+  .iconBtn{
+    width:44px;height:44px;border-radius:50%;
+    background:rgba(0,0,0,0.55);border:1.5px solid rgba(255,255,255,0.3);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:18px;font-family:inherit;cursor:pointer;
+  }
+  .iconBtn:active{transform:scale(0.94)}
+  .iconBtn.muted{color:#777;border-color:#444}
+  .iconBtn.on{color:#7affa0;border-color:#7affa0}
+  #chatWrap{
+    position:fixed;left:max(10px,env(safe-area-inset-left));
+    bottom:calc(max(10px,env(safe-area-inset-bottom)) + 155px);
+    z-index:6;width:min(320px,62vw);pointer-events:none;display:none;
+  }
+  #chatWrap.on{display:block}
+  #chatLog{
+    max-height:150px;overflow-y:auto;padding:6px 10px;
+    background:rgba(0,0,0,0.45);border-radius:8px;
+    font-size:11px;line-height:1.45;pointer-events:auto;touch-action:pan-y;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  #chatLog .msg{margin:2px 0}
+  #chatLog .msg .name{color:#8fb6ff;font-weight:bold}
+  #chatLog .msg.sys .name{color:#888}
+  #chatLog .msg.mine .name{color:#7affa0}
+  #chatInputRow{display:flex;gap:6px;margin-top:6px;pointer-events:auto}
+  #chatInput{flex:1;font-size:12px;padding:7px 10px}
+  #chatSend{min-width:44px;padding:7px 10px;margin:0;border-radius:6px;font-size:12px}
+  #touchUI{position:fixed;inset:0;z-index:5;pointer-events:none;display:none}
+  #touchUI.on{display:block}
+  #joyBase{
+    position:absolute;left:max(18px,env(safe-area-inset-left));
+    bottom:max(18px,env(safe-area-inset-bottom));
+    width:130px;height:130px;border-radius:50%;
+    background:rgba(255,255,255,0.06);
+    border:2px solid rgba(255,255,255,0.18);
+    pointer-events:auto;touch-action:none;
+  }
+  #joyKnob{
+    position:absolute;left:50%;top:50%;width:56px;height:56px;
+    margin-left:-28px;margin-top:-28px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,rgba(120,180,255,0.9),rgba(60,110,180,0.85));
+    border:2px solid rgba(255,255,255,0.4);
+    box-shadow:0 4px 14px rgba(0,0,0,0.5);pointer-events:none;
+  }
+  #btnAction{
+    position:absolute;right:max(22px,env(safe-area-inset-right));
+    bottom:max(40px,calc(env(safe-area-inset-bottom) + 40px));
+    width:96px;height:96px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,rgba(255,150,80,0.95),rgba(180,70,20,0.9));
+    border:2.5px solid rgba(255,220,180,0.6);
+    box-shadow:0 6px 20px rgba(255,120,40,0.35);
+    pointer-events:auto;touch-action:none;
+    display:flex;align-items:center;justify-content:center;
+    font-family:inherit;font-weight:bold;font-size:12px;color:#fff;letter-spacing:1px;
+  }
+  #btnAction:active{transform:scale(0.93)}
+  @media (max-width:560px){
+    #joyBase{width:112px;height:112px}
+    #joyKnob{width:48px;height:48px;margin-left:-24px;margin-top:-24px}
+    #btnAction{width:84px;height:84px;font-size:11px}
+    #chatWrap{width:min(260px,66vw);bottom:calc(max(10px,env(safe-area-inset-bottom)) + 130px)}
+    #chatLog{max-height:110px}
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="topBtns">
+  <div id="btnVoice" class="iconBtn" title="Voice chat">🎤</div>
+  <div id="btnChat" class="iconBtn" title="Chat">💬</div>
+  <div id="btnPause" class="iconBtn" title="Pause">⏸</div>
+</div>
+
+<div id="chatWrap">
+  <div id="chatLog"></div>
+  <div id="chatInputRow">
+    <input id="chatInput" type="text" placeholder="Type message..." maxlength="120" autocomplete="off">
+    <button id="chatSend">Send</button>
+  </div>
+</div>
+
+<div id="touchUI">
+  <div id="joyBase"><div id="joyKnob"></div></div>
+  <div id="btnAction">CHOP<br>/ACT</div>
+</div>
+
+<div class="overlay" id="menu">
+  <h1>99 NIGHTS IN THE FOREST</h1>
+  <div class="subtitle">Survive the wolves. Keep the fire alive.</div>
+  <div style="margin-bottom:14px">
+    <input id="nameInput" type="text" placeholder="Your name" maxlength="14" autocomplete="off">
+  </div>
+  <button id="btnSolo">Solo / Local Co-op</button>
+  <button id="btnOnline">Play Online (same Wi-Fi only)</button>
+  <div class="step" style="margin-top:14px;color:#f0b060;font-size:11px">
+    ⚠ Only works if both players are on the <b>same Wi-Fi network</b>.
+  </div>
+  <div class="step" style="margin-top:14px;color:#556">
+    <div id="hintDesktop">P1: WASD + SPACE &nbsp;|&nbsp; P2: ARROWS + ENTER</div>
+    <div id="hintMobile" class="hidden">TOUCH: joystick to move &nbsp;|&nbsp; big button to act</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="searchOverlay">
+  <h2><span class="spinner"></span>LOOKING ON YOUR WI-FI...</h2>
+  <div class="status" id="searchStatus">Searching for a host on your network</div>
+  <button id="btnSearchCancel" class="secondary" style="margin-top:20px">Cancel</button>
+</div>
+
+<div class="overlay hidden" id="waitOverlay">
+  <h2>WAITING FOR PLAYER ON YOUR WI-FI</h2>
+  <div class="status ok" id="hostCount">0 players connected</div>
+  <div class="step" style="margin-top:10px">
+    Anyone on the <b>same Wi-Fi</b> who opens this URL and clicks "Play Online" will join you.
+  </div>
+  <div class="url-box" id="shareUrl">—</div>
+  <button id="btnCopyUrl">Copy Game URL</button>
+  <button id="btnStartSolo" class="secondary" style="margin-top:14px">Start Playing Now (others can join later)</button>
+  <button id="btnWaitCancel" class="secondary">Cancel</button>
+</div>
+
+<div class="overlay hidden" id="errorOverlay">
+  <h2 style="color:#ff7a7a" id="errTitle">CONNECTION FAILED</h2>
+  <div class="status error" id="errorMsg">—</div>
+  <button id="btnErrBack" class="secondary" style="margin-top:20px">Back</button>
+</div>
+
+<div class="overlay hidden" id="pauseOverlay">
+  <h2>PAUSED</h2>
+  <button id="btnResume">Resume</button>
+  <button id="btnQuit" class="secondary">Quit to Menu</button>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+"use strict";
+
+/* =========================================================
+   99 Nights — Same-WiFi-only Co-op
+   STUN/TURN disabled → only local LAN connections possible
+   ========================================================= */
+
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d', { alpha:false });
+let W = 1, H = 1, DPR = 1;
+const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+const IS_MOBILE = IS_TOUCH && Math.min(window.innerWidth, window.innerHeight) < 900;
+const MAX_PLAYERS = 8;
+
+/* *** Critical: no STUN, no TURN → only LAN connections *** */
+const LOCAL_ONLY_ICE = { iceServers: [] };
+
+function resize(){
+  const rawDPR = window.devicePixelRatio || 1;
+  DPR = Math.min(rawDPR, IS_MOBILE ? 1.5 : 1.75);
+  W = window.innerWidth; H = window.innerHeight;
+  cvs.width  = Math.floor(W * DPR);
+  cvs.height = Math.floor(H * DPR);
+  cvs.style.width  = W + 'px';
+  cvs.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', ()=>setTimeout(resize,120));
+resize();
+if(IS_TOUCH){
+  document.getElementById('hintDesktop').classList.add('hidden');
+  document.getElementById('hintMobile').classList.remove('hidden');
+}
+
+/* ---------------- helpers ---------------- */
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const dist2=(ax,az,bx,bz)=>{const dx=ax-bx,dz=az-bz;return dx*dx+dz*dz;};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function mix(c1,c2,t){return 'rgb('+Math.round(lerp(c1[0],c2[0],t))+','+Math.round(lerp(c1[1],c2[1],t))+','+Math.round(lerp(c1[2],c2[2],t))+')';}
+function rr(x,y,w,h,r){r=Math.min(r,Math.abs(w)/2,Math.abs(h)/2);
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;
+  var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296;};}
+
+/* ---------------- camera ---------------- */
+const cam={x:0,y:13,z:16};
+let fx=0,fy=-0.6,fz=-0.8;
+let rx=1,ry=0,rz=0;
+let ux=0,uy=1,uz=0;
+let focal=700,horizonY=0;
+const nearPlane=0.35;
+function proj(x,y,z){
+  const dx=x-cam.x,dy=y-cam.y,dz=z-cam.z;
+  return {vx:dx*rx+dy*ry+dz*rz, vy:dx*ux+dy*uy+dz*uz, vz:dx*fx+dy*fy+dz*fz};
+}
+function scr(v){const s=focal/v.vz;return {x:W*0.5+v.vx*s, y:H*0.5-v.vy*s, s};}
+function updateCamera(dt){
+  let tx=0, tz=0, n=0;
+  const local = getLocalPlayer();
+  if(local && !local.dead){ tx=local.x; tz=local.z; n=1; }
+  else {
+    for(const p of players){ if(!p.dead){ tx+=p.x; tz+=p.z; n++; } }
+    if(n===0 && players.length){ tx=players[0].x; tz=players[0].z; n=1; }
+    if(n>0){ tx/=n; tz/=n; }
+  }
+  const k=1-Math.pow(0.0015,dt);
+  cam.x=lerp(cam.x,tx,k);
+  cam.y=lerp(cam.y,12.6,k);
+  cam.z=lerp(cam.z,tz+15.5,k);
+  const lx=tx,ly=1.1,lz=tz-3.5;
+  let dfx=lx-cam.x,dfy=ly-cam.y,dfz=lz-cam.z;
+  const len=Math.hypot(dfx,dfy,dfz)||1;
+  fx=dfx/len;fy=dfy/len;fz=dfz/len;
+  let rl=Math.hypot(-fz,0,fx)||1;
+  rx=-fz/rl;ry=0;rz=fx/rl;
+  ux=ry*fz-rz*fy;uy=rz*fx-rx*fz;uz=rx*fy-ry*fx;
+  const ul=Math.hypot(ux,uy,uz)||1;
+  ux/=ul;uy/=ul;uz/=ul;
+  focal=(H*0.5)/Math.tan(31*Math.PI/180);
+  const hl=Math.hypot(fx,fz)||1;
+  const hx=fx/hl,hz=fz/hl;
+  const vhy=hx*ux+hz*uz;
+  const vhz=hx*fx+hz*fz;
+  horizonY=H*0.5-focal*(vhy/(vhz||1e-6));
+}
+
+/* ---------------- input ---------------- */
+const keys={};const pressed={};
+const BLOCK=['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Slash'];
+function typing(){const a=document.activeElement;return a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT');}
+window.addEventListener('keydown',e=>{
+  if(typing()) return;
+  if(!keys[e.code]) pressed[e.code]=true;
+  keys[e.code]=true;
+  if(BLOCK.includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup',e=>{ if(typing()) return; keys[e.code]=false; });
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+
+const touch = { joyX:0, joyZ:0, actionDown:false, actionJustPressed:false };
+
+/* ---------------- phases ---------------- */
+const PHASE={MENU:0, SEARCH:1, WAIT:2, PLAYING:3, ERROR:4, PAUSED:5};
+
+/* ---------------- net state ---------------- */
+const net={
+  mode:'solo',
+  peer:null,
+  dc:null,
+  guests:new Map(),
+  connected:false,
+  lastSendT:0,
+  lastStateT:0,
+  seed:0,
+  myPeerId:null,
+  myPlayerId:0,
+  voiceEnabled:false,
+  voiceStream:null,
+  voicePeers:new Map(),
+  voiceAudioEls:new Map()
+};
+
+/* ---------------- players (dynamic) ---------------- */
+const PLAYER_COLORS = [
+  {c:'#4fa8ff', d:'#255f9c'},
+  {c:'#ff8a4f', d:'#a8501f'},
+  {c:'#8aff6b', d:'#3fa825'},
+  {c:'#ff6bd6', d:'#a8258a'},
+  {c:'#ffdd44', d:'#a88a1f'},
+  {c:'#a86bff', d:'#5a258a'},
+  {c:'#6bffff', d:'#258a8a'},
+  {c:'#ff6b6b', d:'#a82525'}
+];
+
+const players=[];
+
+function makePlayer(id, name, peerId, isLocal){
+  const col = PLAYER_COLORS[id % PLAYER_COLORS.length];
+  return {
+    id, name: name || ('P'+(id+1)), peerId, local: !!isLocal,
+    x: -2 + (id*1.4), z: 4 + Math.floor(id/3)*1.4,
+    hp:100, maxhp:100, wood:0,
+    face:0, atkCd:0, swing:0, walk:0,
+    dead:false, respawn:0, hurt:0,
+    color: col.c, dark: col.d, ghostT:0
+  };
+}
+function getLocalPlayer(){
+  if(net.mode==='guest') return players.find(p=>p.id===net.myPlayerId) || null;
+  return players.find(p=>p.id===0) || players[0] || null;
+}
+
+/* ---------------- world ---------------- */
+const WORLD_R=95;
+const CYCLE=100;
+const DAY_FRAC=0.55;
+const RESPAWN_T=40;
+let now=0,cycleT=0,light=1,isNight=false,night=0;
+let gameOver=false;
+let msgText='',msgTimer=0;
+const trees=[],rocks=[],wolves=[],particles=[],sprites=[];
+const stars=[];
+const fire={x:0,z:0,fuel:80,max:170};
+let nextWolfId=1;
+
+for(let i=0;i<140;i++){
+  stars.push({x:Math.random(),y:Math.random()*0.55,r:Math.random()*1.3+0.3,tw:Math.random()*6.28});
+}
+
+function genWorld(seed){
+  net.seed=seed>>>0;
+  const rand=mulberry32(net.seed);
+  trees.length=0;rocks.length=0;wolves.length=0;particles.length=0;
+  nextWolfId=1;
+  for(let i=0;i<175;i++){
+    const a=rand()*Math.PI*2, r=7+Math.pow(rand(),0.65)*88;
+    trees.push({x:Math.cos(a)*r, z:Math.sin(a)*r,
+      h:5.5+rand()*4.5, w:2.3+rand()*1.4,
+      hp:3, alive:true, timer:0, seed:rand(), shake:0});
+  }
+  for(let i=0;i<28;i++){
+    const a=rand()*Math.PI*2, r=9+rand()*72;
+    rocks.push({x:Math.cos(a)*r, z:Math.sin(a)*r, s:0.8+rand()*0.9, seed:rand()});
+  }
+  fire.x=0; fire.z=0; fire.fuel=80;
+  cycleT=0; night=0; isNight=false; light=1;
+  gameOver=false;
+  cam.x=0; cam.y=13; cam.z=20;
+  for(let i=0;i<players.length;i++){
+    const p=players[i];
+    p.x=-2+(i*1.4); p.z=4+Math.floor(i/3)*1.4;
+    p.hp=100; p.wood=0; p.dead=false; p.respawn=0;
+    p.atkCd=0; p.swing=0; p.hurt=0; p.walk=0; p.face=0;
+  }
+}
+function resetGame(seed){
+  const s=(seed===undefined)?((Math.random()*2**31)|0):seed;
+  genWorld(s);
+  msgText='';msgTimer=0;
+  msg('SURVIVE 99 NIGHTS',3);
+}
+function msg(t,dur){ msgText=t; msgTimer=dur; }
+
+function burst(x,y,z,n,col,spd,life){
+  if(IS_MOBILE) n = Math.max(3, Math.floor(n*0.55));
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, p=Math.random()*spd;
+    particles.push({x,y:y+Math.random()*0.6,z,
+      vx:Math.cos(a)*p,vy:rnd(1.5,4.5),vz:Math.sin(a)*p,
+      life:life*rnd(0.6,1.2),max:life,col});
+  }
+}
+
+function spawnWolves(){
+  const n=Math.min(3+Math.floor(night*0.75)+Math.floor(players.length*0.5), 20);
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, r=rnd(42,62);
+    wolves.push({id:nextWolfId++,
+      x:fire.x+Math.cos(a)*r, z:fire.z+Math.sin(a)*r,
+      hp:3+Math.floor(night/6), maxhp:3+Math.floor(night/6),
+      spd:rnd(4.6,5.6)+night*0.05,
+      dmg:7+night*0.55, cd:rnd(0.4,1.2),
+      hurt:0,vx:1,seed:Math.random()*10});
+  }
+}
+
+function doAttack(p){
+  let best=null,bd=3.0*3.0;
+  for(const w of wolves){
+    const d=dist2(p.x,p.z,w.x,w.z);
+    if(d<bd){bd=d;best=w;}
+  }
+  if(best){
+    best.hp-=1; best.hurt=0.25;
+    const d=Math.sqrt(bd)||1;
+    best.x+=(best.x-p.x)/d*1.2; best.z+=(best.z-p.z)/d*1.2;
+    burst(best.x,0.9,best.z,6,'#c0392b',2.2,0.5);
+    if(best.hp<=0){
+      wolves.splice(wolves.indexOf(best),1);
+      burst(best.x,0.8,best.z,14,'#7f2b2b',3,0.8);
+    }
+    return;
+  }
+  const df=Math.hypot(p.x-fire.x,p.z-fire.z);
+  if(df<3.2 && p.wood>0 && fire.fuel<fire.max){
+    p.wood--; fire.fuel=Math.min(fire.max,fire.fuel+30);
+    burst(fire.x,0.7,fire.z,10,'#ffb347',2.5,0.7);
+    return;
+  }
+  let bt=null,btd=3.0*3.0;
+  for(const t of trees){
+    if(!t.alive) continue;
+    const d=dist2(p.x,p.z,t.x,t.z);
+    if(d<btd){btd=d;bt=t;}
+  }
+  if(bt){
+    bt.hp--; bt.shake=0.28;
+    burst(bt.x,1.2,bt.z,5,'#6b4b2a',2,0.6);
+    if(bt.hp<=0){
+      bt.alive=false; bt.timer=0; p.wood+=2;
+      burst(bt.x,1.4,bt.z,16,'#4d7c3a',3,0.9);
+    }
+  }
+}
+
+function lightLevel(p){
+  if(p<DAY_FRAC) return 1;
+  if(p<DAY_FRAC+0.10) return 1-(p-DAY_FRAC)/0.10;
+  if(p<0.90) return 0;
+  return (p-0.90)/0.10;
+}
+function keyStateForRemote(kObj, code){ return !!kObj[code]; }
+
+function simulate(dt){
+  now+=dt; cycleT+=dt;
+  if(cycleT>=CYCLE) cycleT-=CYCLE;
+  light=lightLevel(cycleT/CYCLE);
+  const nightNow=light<0.35;
+  if(nightNow && !isNight){ isNight=true; night++; spawnWolves(); msg('NIGHT '+night+'  —  STAY BY THE FIRE',3); }
+  if(!nightNow && isNight){ isNight=false; msg('DAY '+(night+1)+'  —  GATHER WOOD',3); }
+  if(msgTimer>0) msgTimer-=dt;
+
+  const drain=isNight?1.15:0.22;
+  fire.fuel=Math.max(0,fire.fuel-drain*dt);
+  const fireLit=fire.fuel>0;
+
+  for(let pi=0; pi<players.length; pi++){
+    const p=players[pi];
+    if(p.hurt>0) p.hurt-=dt;
+    if(p.atkCd>0) p.atkCd-=dt;
+    if(p.swing>0) p.swing-=dt;
+    if(p.ghostT>0){
+      p.ghostT-=dt;
+      if(p.ghostT<=0){ players.splice(pi,1); pi--; broadcastPlayerList(); continue; }
+    }
+    if(p.dead){
+      p.respawn-=dt;
+      if(p.respawn<=0 && !gameOver){
+        p.dead=false; p.hp=60;
+        p.x=fire.x+rnd(-2,2); p.z=fire.z+rnd(2,4);
+        p.wood=Math.max(0,p.wood-2);
+      }
+      continue;
+    }
+    let dx=0,dz=0, wantsAttack=false;
+    if(p.id===0){
+      if(keys['KeyW'] || keys['ArrowUp'])    dz-=1;
+      if(keys['KeyS'] || keys['ArrowDown'])  dz+=1;
+      if(keys['KeyA'] || keys['ArrowLeft'])  dx-=1;
+      if(keys['KeyD'] || keys['ArrowRight']) dx+=1;
+      dx += touch.joyX; dz += touch.joyZ;
+      wantsAttack = pressed['Space'] || pressed['Enter'] || touch.actionJustPressed;
+    } else if(net.mode==='solo' && p.id===1){
+      if(keys['ArrowUp'])    dz-=1;
+      if(keys['ArrowDown'])  dz+=1;
+      if(keys['ArrowLeft'])  dx-=1;
+      if(keys['ArrowRight']) dx+=1;
+      wantsAttack = pressed['Enter'] || pressed['Slash'] || pressed['ShiftRight'];
+    } else if(net.mode==='host'){
+      const g = findGuestByPlayerId(p.id);
+      if(g && g.lastKeys){
+        if(keyStateForRemote(g.lastKeys,'KeyW')||keyStateForRemote(g.lastKeys,'ArrowUp'))    dz-=1;
+        if(keyStateForRemote(g.lastKeys,'KeyS')||keyStateForRemote(g.lastKeys,'ArrowDown'))  dz+=1;
+        if(keyStateForRemote(g.lastKeys,'KeyA')||keyStateForRemote(g.lastKeys,'ArrowLeft'))  dx-=1;
+        if(keyStateForRemote(g.lastKeys,'KeyD')||keyStateForRemote(g.lastKeys,'ArrowRight')) dx+=1;
+        dx += (g.lastKeys.__tx||0);
+        dz += (g.lastKeys.__tz||0);
+        if(g.lastKeys.__act) wantsAttack=true;
+      }
+    }
+    const l=Math.hypot(dx,dz);
+    if(l>0.05){
+      if(l>1){ dx/=l; dz/=l; }
+      p.face=Math.atan2(dx,dz);
+      p.walk+=dt*11;
+      const sm = l<1 ? Math.min(1,l) : 1;
+      p.x+=dx*7.2*dt*sm; p.z+=dz*7.2*dt*sm;
+    } else { p.walk*=Math.pow(0.001,dt); }
+
+    for(const t of trees){
+      if(!t.alive) continue;
+      const ddx=p.x-t.x, ddz=p.z-t.z;
+      const d2=ddx*ddx+ddz*ddz;
+      const rad=1.0+t.w*0.12;
+      if(d2<rad*rad && d2>0.0001){
+        const d=Math.sqrt(d2);
+        p.x=t.x+ddx/d*rad; p.z=t.z+ddz/d*rad;
+      }
+    }
+    const r2=Math.hypot(p.x,p.z);
+    if(r2>WORLD_R){p.x*=WORLD_R/r2;p.z*=WORLD_R/r2;}
+
+    if(wantsAttack && p.atkCd<=0){
+      p.atkCd=0.5; p.swing=0.3; doAttack(p);
+    }
+    const dfire=Math.hypot(p.x-fire.x,p.z-fire.z);
+    if(isNight){
+      if(fireLit && dfire<10.5) p.hp=Math.min(p.maxhp,p.hp+3.5*dt);
+      else p.hp-=(fireLit?2.6:4.4)*dt;
+    } else {
+      if(fireLit && dfire<10.5) p.hp=Math.min(p.maxhp,p.hp+4*dt);
+    }
+    if(p.hp<=0){
+      p.hp=0; p.dead=true; p.respawn=9;
+      burst(p.x,1,p.z,22,'#c0392b',3.5,1);
+    }
+  }
+  if(players.length>0 && players.every(p=>p.dead)) gameOver=true;
+
+  for(let i=wolves.length-1;i>=0;i--){
+    const w=wolves[i];
+    if(w.hurt>0) w.hurt-=dt;
+    let best=null,bd=1e9;
+    for(const p of players){
+      if(p.dead) continue;
+      const d=dist2(w.x,w.z,p.x,p.z);
+      if(d<bd){bd=d;best=p;}
+    }
+    const d=Math.sqrt(bd);
+    if(isNight && best){
+      if(d>1.45){
+        const dx=(best.x-w.x)/d,dz=(best.z-w.z)/d;
+        w.x+=dx*w.spd*dt; w.z+=dz*w.spd*dt; w.vx=dx;
+      } else {
+        w.cd-=dt;
+        if(w.cd<=0){
+          w.cd=1.15; best.hp-=w.dmg; best.hurt=0.35;
+          burst(best.x,1,best.z,7,'#e74c3c',2.5,0.5);
+        }
+      }
+    } else {
+      const dx=w.x-cam.x,dz=w.z-cam.z;
+      const ll=Math.hypot(dx,dz)||1;
+      w.x+=dx/ll*w.spd*1.5*dt; w.z+=dz/ll*w.spd*1.5*dt;
+      if(Math.hypot(w.x,w.z)>115) wolves.splice(i,1);
+    }
+  }
+  for(const t of trees){
+    if(t.shake>0) t.shake-=dt;
+    if(!t.alive){ t.timer+=dt; if(t.timer>=RESPAWN_T){t.alive=true;t.hp=3;t.shake=0;} }
+  }
+  for(let i=particles.length-1;i>=0;i--){
+    const q=particles[i];
+    q.life-=dt;
+    if(q.life<=0){particles.splice(i,1);continue;}
+    q.vy-=12*dt;
+    q.x+=q.vx*dt; q.y+=q.vy*dt; q.z+=q.vz*dt;
+    if(q.y<0){q.y=0;q.vy*=-0.35;q.vx*=0.6;q.vz*=0.6;}
+  }
+}
+function findGuestByPlayerId(pid){
+  for(const g of net.guests.values()) if(g.playerId===pid) return g;
+  return null;
+}
+
+/* ---------------- rendering ---------------- */
+function line3(x1,y1,z1,x2,y2,z2){
+  let a=proj(x1,y1,z1),b=proj(x2,y2,z2);
+  const NP=nearPlane;
+  if(a.vz<NP && b.vz<NP) return;
+  if(a.vz<NP){ const t=(NP-a.vz)/(b.vz-a.vz);
+    a={vx:a.vx+(b.vx-a.vx)*t,vy:a.vy+(b.vy-a.vy)*t,vz:NP}; }
+  else if(b.vz<NP){ const t=(NP-b.vz)/(a.vz-b.vz);
+    b={vx:b.vx+(a.vx-b.vx)*t,vy:b.vy+(a.vy-b.vy)*t,vz:NP}; }
+  const sa=scr(a),sb=scr(b);
+  ctx.moveTo(sa.x,sa.y); ctx.lineTo(sb.x,sb.y);
+}
+function drawGround(){
+  const L=light;
+  const skyTopN=[7,10,24],skyTopD=[92,170,224];
+  const skyBotN=[24,32,54],skyBotD=[206,232,244];
+  const gndFarN=[11,18,20],gndFarD=[104,140,84];
+  const gndNearN=[7,12,12],gndNearD=[62,96,52];
+  const skyTop=mix(skyTopN,skyTopD,L), skyBot=mix(skyBotN,skyBotD,L);
+  const gndFar=mix(gndFarN,gndFarD,L), gndNear=mix(gndNearN,gndNearD,L);
+  const hy=clamp(horizonY,-4000,H+4000);
+  if(L<0.75){
+    const a=(0.75-L)/0.75;
+    const starCount=IS_MOBILE?60:stars.length;
+    for(let i=0;i<starCount;i++){
+      const s=stars[i];
+      const sy=s.y*Math.max(hy,0);
+      if(sy<0||sy>H) continue;
+      const tw=0.55+0.45*Math.sin(now*2.2+s.tw);
+      ctx.fillStyle='rgba(255,255,255,'+(a*tw*0.9).toFixed(3)+')';
+      ctx.fillRect(s.x*W,sy,s.r,s.r);
+    }
+  }
+  if(hy>0){
+    const g=ctx.createLinearGradient(0,0,0,hy);
+    g.addColorStop(0,skyTop); g.addColorStop(1,skyBot);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,Math.min(hy,H));
+  }
+  const g0=Math.max(0,hy);
+  const gg=ctx.createLinearGradient(0,hy,0,H);
+  gg.addColorStop(0,gndFar); gg.addColorStop(1,gndNear);
+  ctx.fillStyle=gg; ctx.fillRect(0,g0,W,H-g0);
+  const step=4;
+  const cx=Math.round(cam.x/step)*step, cz=Math.round(cam.z/step)*step;
+  const R= IS_MOBILE?30:46;
+  ctx.strokeStyle='rgba(0,0,0,'+(0.10+0.10*(1-L)).toFixed(3)+')';
+  ctx.lineWidth=1; ctx.beginPath();
+  for(let i=-R;i<=R;i+=step){
+    line3(cx+i,0,cz-R,cx+i,0,cz+R);
+    line3(cx-R,0,cz+i,cx+R,0,cz+i);
+  }
+  ctx.stroke();
+  if(hy>-200&&hy<H+200){
+    const hz=ctx.createLinearGradient(0,hy-60,0,hy+70);
+    const hzCol=mix([16,24,30],[180,205,190],L);
+    hz.addColorStop(0,'rgba(0,0,0,0)');
+    hz.addColorStop(0.5,hzCol.replace('rgb','rgba').replace(')',',0.55)'));
+    hz.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=hz;
+    ctx.fillRect(0,Math.max(0,hy-60),W,130);
+  }
+}
+function drawTree(t,v){
+  const base=scr(v);
+  const vt=proj(t.x,t.h,t.z);
+  if(vt.vz<0.4) return;
+  const top=scr(vt);
+  const h=base.y-top.y;
+  if(h<2) return;
+  const w=t.w*focal/v.vz;
+  const shake=t.shake>0?Math.sin(t.shake*70)*w*0.06:0;
+  const sway=Math.sin(now*1.1+t.seed*12)*w*0.025;
+  const cx=base.x+sway+shake;
+  const alpha=clamp(1-(v.vz-38)/42,0.12,1);
+  ctx.globalAlpha=alpha;
+  if(!t.alive){
+    ctx.fillStyle='#4a3626';
+    ctx.fillRect(cx-w*0.10,base.y-h*0.18,w*0.20,h*0.18);
+    ctx.fillStyle='#7a5c3a';
+    ctx.beginPath();ctx.ellipse(cx,base.y-h*0.18,w*0.10,w*0.035,0,0,6.3);ctx.fill();
+    ctx.globalAlpha=1; return;
+  }
+  const trunkW=w*0.15, trunkH=h*0.30;
+  ctx.fillStyle='#4b3728';
+  ctx.fillRect(cx-trunkW/2,base.y-trunkH,trunkW,trunkH);
+  const hue=128+t.seed*26, lum=16+t.seed*9;
+  ctx.fillStyle='hsl('+hue+',32%,'+lum+'%)';
+  for(let i=0;i<3;i++){
+    const ty=top.y+h*(0.02+i*0.255);
+    const by=ty+h*0.42;
+    const ww=w*(0.56+i*0.26);
+    ctx.beginPath();
+    ctx.moveTo(cx,ty); ctx.lineTo(cx-ww*0.5,by); ctx.lineTo(cx+ww*0.5,by);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,255,255,0.05)';
+  ctx.beginPath();
+  ctx.moveTo(cx,top.y+h*0.02); ctx.lineTo(cx-w*0.28,top.y+h*0.55);
+  ctx.lineTo(cx,top.y+h*0.50); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha=1;
+}
+function drawRock(r,v){
+  const base=scr(v);
+  const vt=proj(r.x,r.s*0.9,r.z);
+  const top=scr(vt);
+  const h=base.y-top.y;
+  if(h<1.5) return;
+  const w=r.s*1.5*focal/v.vz;
+  ctx.globalAlpha=clamp(1-(v.vz-38)/42,0.12,1);
+  ctx.fillStyle='#5a6068';
+  ctx.beginPath();
+  ctx.moveTo(base.x-w*0.5,base.y);
+  ctx.lineTo(base.x-w*0.34,base.y-h*0.85);
+  ctx.lineTo(base.x+w*0.10,base.y-h);
+  ctx.lineTo(base.x+w*0.46,base.y-h*0.55);
+  ctx.lineTo(base.x+w*0.5,base.y);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.10)';
+  ctx.beginPath();
+  ctx.moveTo(base.x-w*0.34,base.y-h*0.85);
+  ctx.lineTo(base.x+w*0.10,base.y-h);
+  ctx.lineTo(base.x+w*0.02,base.y-h*0.55);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha=1;
+}
+function drawPlayer(p,v){
+  const base=scr(v);
+  const vt=proj(p.x,1.85,p.z);
+  if(vt.vz<0.4) return;
+  const top=scr(vt);
+  const h=base.y-top.y;
+  if(h<3) return;
+  const w=h*0.46, feet=base.y, headR=h*0.135;
+  const bob=Math.sin(p.walk)*h*0.022;
+  const headY=top.y+headR+bob;
+  const bodyTop=headY+headR*0.85;
+  const bodyBot=feet-h*0.40;
+  const cx=base.x;
+  ctx.save();
+  if(p.ghostT>0) ctx.globalAlpha = clamp(p.ghostT/3, 0.2, 1);
+  if(p.local){
+    ctx.strokeStyle='rgba(255,255,255,0.5)';
+    ctx.lineWidth=1.8;
+    ctx.beginPath();
+    ctx.ellipse(cx,feet,w*0.78,w*0.30,0,0,6.3); ctx.stroke();
+  }
+  ctx.font='bold '+Math.max(9,h*0.14)+'px ui-monospace, monospace';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillStyle='rgba(0,0,0,0.65)';
+  ctx.fillText(p.name, cx+1, top.y-6);
+  ctx.fillStyle=p.color;
+  ctx.fillText(p.name, cx, top.y-7);
+
+  ctx.fillStyle='rgba(0,0,0,0.30)';
+  ctx.beginPath();ctx.ellipse(cx,feet,w*0.62,w*0.22,0,0,6.3);ctx.fill();
+  const legSwing=Math.sin(p.walk)*w*0.16;
+  ctx.fillStyle=p.dark;
+  rr(cx-w*0.30+legSwing,bodyBot+bob,w*0.22,feet-bodyBot-bob,w*0.08);ctx.fill();
+  rr(cx+w*0.08-legSwing,bodyBot+bob,w*0.22,feet-bodyBot-bob,w*0.08);ctx.fill();
+  ctx.fillStyle=p.hurt>0?'#ff5555':p.color;
+  rr(cx-w*0.35,bodyTop,w*0.70,bodyBot-bodyTop,w*0.22);ctx.fill();
+  const prog=p.swing>0?(1-p.swing/0.3):0;
+  const ang=-1.05+(p.swing>0?prog*2.5:0);
+  const shx=cx+w*0.30, shy=bodyTop+h*0.09;
+  const armLen=h*0.30;
+  const hx=shx+Math.cos(ang)*armLen, hy=shy+Math.sin(ang)*armLen;
+  ctx.strokeStyle=p.dark;
+  ctx.lineWidth=Math.max(1.5,w*0.19); ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(shx,shy);ctx.lineTo(hx,hy);ctx.stroke();
+  ctx.strokeStyle='#8a6a3f';
+  ctx.lineWidth=Math.max(1.4,w*0.11);
+  const ax2=hx+Math.cos(ang)*h*0.24, ay2=hy+Math.sin(ang)*h*0.24;
+  ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(ax2,ay2);ctx.stroke();
+  ctx.fillStyle='#cfd6dd';
+  ctx.beginPath();ctx.arc(ax2,ay2,Math.max(1.6,h*0.065),0,6.3);ctx.fill();
+  ctx.fillStyle='#f0c9a0';
+  ctx.beginPath();ctx.arc(cx,headY,headR,0,6.3);ctx.fill();
+  ctx.fillStyle=p.dark;
+  ctx.beginPath();ctx.arc(cx,headY-headR*0.12,headR*1.03,Math.PI*1.02,Math.PI*2.02);ctx.fill();
+  if(p.wood>0){
+    ctx.fillStyle='#8a6a3f';
+    const n=Math.min(p.wood,4);
+    for(let i=0;i<n;i++){
+      ctx.fillRect(cx-w*0.55,bodyBot-i*h*0.045-h*0.06,w*0.35,h*0.035);
+    }
+  }
+  ctx.restore();
+}
+function drawWolf(w,v){
+  const base=scr(v);
+  const vt=proj(w.x,1.15,w.z);
+  const top=scr(vt);
+  const h=base.y-top.y;
+  if(h<2.5) return;
+  const wd=h*1.55;
+  ctx.save();
+  ctx.translate(base.x,base.y);
+  const dir=w.vx>=0?1:-1; ctx.scale(dir,1);
+  ctx.fillStyle='rgba(0,0,0,0.30)';
+  ctx.beginPath();ctx.ellipse(0,0,wd*0.52,wd*0.15,0,0,6.3);ctx.fill();
+  const body=w.hurt>0?'#a33b3b':'#333b45';
+  ctx.strokeStyle='#22272e';
+  ctx.lineWidth=Math.max(1.2,wd*0.075);
+  for(const lx of [-0.30,-0.15,0.16,0.30]){
+    const sw=Math.sin(now*11+(w.seed||0)+lx*8)*wd*0.06;
+    ctx.beginPath();ctx.moveTo(lx*wd,-h*0.42);ctx.lineTo(lx*wd+sw,0);ctx.stroke();
+  }
+  ctx.strokeStyle=body;
+  ctx.lineWidth=Math.max(1.5,wd*0.10);
+  ctx.beginPath();ctx.moveTo(-wd*0.42,-h*0.62);
+  ctx.quadraticCurveTo(-wd*0.70,-h*0.72,-wd*0.66,-h*0.95);ctx.stroke();
+  ctx.fillStyle=body;
+  ctx.beginPath();ctx.ellipse(0,-h*0.56,wd*0.46,h*0.24,0,0,6.3);ctx.fill();
+  ctx.beginPath();ctx.arc(wd*0.44,-h*0.74,h*0.17,0,6.3);ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(wd*0.56,-h*0.78);ctx.lineTo(wd*0.76,-h*0.70);ctx.lineTo(wd*0.56,-h*0.63);
+  ctx.closePath();ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(wd*0.36,-h*0.88);ctx.lineTo(wd*0.34,-h*1.00);ctx.lineTo(wd*0.46,-h*0.90);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ff3b2f';
+  ctx.beginPath();ctx.arc(wd*0.50,-h*0.78,Math.max(0.8,h*0.030),0,6.3);ctx.fill();
+  ctx.beginPath();ctx.arc(wd*0.40,-h*0.80,Math.max(0.8,h*0.026),0,6.3);ctx.fill();
+  ctx.restore();
+  if(w.hp<w.maxhp){
+    const bw=Math.max(16,h*0.9);
+    const bx=base.x-bw/2,by=top.y-8;
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx-1,by-1,bw+2,5);
+    ctx.fillStyle='#e04b3a'; ctx.fillRect(bx,by,bw*(w.hp/w.maxhp),3);
+  }
+}
+function drawFire(v){
+  const base=scr(v);
+  const vt=proj(fire.x,1.3,fire.z);
+  const top=scr(vt);
+  const h=base.y-top.y;
+  if(h<2) return;
+  const w=h*1.5;
+  const lit=fire.fuel>0;
+  ctx.save();
+  ctx.translate(base.x,base.y);
+  ctx.fillStyle='#4a5058';
+  ctx.beginPath();ctx.ellipse(0,0,w*0.62,w*0.22,0,0,6.3);ctx.fill();
+  ctx.fillStyle='#3a4048';
+  for(let i=0;i<7;i++){
+    const a=i/7*6.283;
+    ctx.beginPath();
+    ctx.ellipse(Math.cos(a)*w*0.55,Math.sin(a)*w*0.19,w*0.10,w*0.07,0,0,6.3);
+    ctx.fill();
+  }
+  ctx.fillStyle='#3d2a1a';
+  ctx.save();ctx.rotate(0.5);ctx.fillRect(-w*0.34,-w*0.07,w*0.68,w*0.14);ctx.restore();
+  ctx.save();ctx.rotate(-0.5);ctx.fillRect(-w*0.34,-w*0.07,w*0.68,w*0.14);ctx.restore();
+  if(lit){
+    const strength=clamp(fire.fuel/50,0.35,1.25);
+    const fh=h*strength;
+    for(let i=0;i<6;i++){
+      const t=now*7+i*1.9;
+      const ox=Math.sin(t)*w*0.17;
+      const sc=0.55+0.45*Math.abs(Math.sin(t*1.35+i));
+      const col=i%3===0?'rgba(255,225,120,0.95)'
+              :i%3===1?'rgba(255,150,40,0.88)':'rgba(255,80,20,0.80)';
+      ctx.fillStyle=col;
+      ctx.beginPath();
+      ctx.moveTo(ox-w*0.20*sc,0);
+      ctx.quadraticCurveTo(ox-w*0.13*sc,-fh*0.62*sc,ox,-fh*sc);
+      ctx.quadraticCurveTo(ox+w*0.13*sc,-fh*0.62*sc,ox+w*0.20*sc,0);
+      ctx.closePath();ctx.fill();
+    }
+    for(let i=0;i<3;i++){
+      const t=now*2.5+i*2.1;
+      const ey=-((t%1))*fh*1.5;
+      const ex=Math.sin(t*3.3)*w*0.4;
+      ctx.fillStyle='rgba(255,180,60,'+(1-(t%1)).toFixed(2)+')';
+      ctx.fillRect(ex,ey,2.5,2.5);
+    }
+  } else {
+    ctx.fillStyle='rgba(60,60,60,0.7)';
+    ctx.beginPath();ctx.arc(0,-w*0.2,w*0.2,0,6.3);ctx.fill();
+  }
+  ctx.restore();
+}
+
+function render(){
+  updateCamera(1/60);
+  drawGround();
+  sprites.length=0;
+  const MAXD = IS_MOBILE ? 55 : 78;
+  const MAXW = IS_MOBILE ? 60 : 90;
+  for(const t of trees){
+    const v=proj(t.x,0,t.z);
+    if(v.vz<0.7||v.vz>MAXD) continue;
+    sprites.push({vz:v.vz,k:0,o:t,v});
+  }
+  for(const r of rocks){
+    const v=proj(r.x,0,r.z);
+    if(v.vz<0.7||v.vz>MAXW) continue;
+    sprites.push({vz:v.vz,k:1,o:r,v});
+  }
+  {
+    const v=proj(fire.x,0,fire.z);
+    if(v.vz>0.7&&v.vz<MAXW) sprites.push({vz:v.vz,k:2,o:fire,v});
+  }
+  for(const p of players){
+    if(p.dead && p.ghostT<=0 && p.respawn<7) continue;
+    const v=proj(p.x,0,p.z);
+    if(v.vz<0.7||v.vz>MAXW) continue;
+    sprites.push({vz:v.vz,k:3,o:p,v});
+  }
+  for(const w of wolves){
+    const v=proj(w.x,0,w.z);
+    if(v.vz<0.7||v.vz>MAXW) continue;
+    sprites.push({vz:v.vz,k:4,o:w,v});
+  }
+  sprites.sort((a,b)=>b.vz-a.vz);
+  for(const s of sprites){
+    switch(s.k){
+      case 0:drawTree(s.o,s.v);break;
+      case 1:drawRock(s.o,s.v);break;
+      case 2:drawFire(s.v);break;
+      case 3:drawPlayer(s.o,s.v);break;
+      case 4:drawWolf(s.o,s.v);break;
+    }
+  }
+  for(const q of particles){
+    const v=proj(q.x,q.y,q.z);
+    if(v.vz<0.6) continue;
+    const p=scr(v);
+    const a=clamp(q.life/q.max,0,1);
+    ctx.globalAlpha=a;
+    ctx.fillStyle=q.col;
+    const sz=Math.max(1.2,0.10*focal/v.vz);
+    ctx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
+  }
+  ctx.globalAlpha=1;
+  if(light<1){
+    ctx.fillStyle='rgba(6,10,26,'+((1-light)*0.74).toFixed(3)+')';
+    ctx.fillRect(0,0,W,H);
+  }
+  if(fire.fuel>0){
+    const v=proj(fire.x,0.9,fire.z);
+    if(v.vz>0.6){
+      const p=scr(v);
+      const R=clamp(15*focal/v.vz,70,Math.max(W,H)*1.4);
+      const flick=0.9+0.1*Math.sin(now*13)+0.05*Math.sin(now*29);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,R*flick);
+      const inten=0.30+(1-light)*0.55;
+      g.addColorStop(0,'rgba(255,190,90,'+(inten*0.95).toFixed(3)+')');
+      g.addColorStop(0.35,'rgba(255,130,40,'+(inten*0.45).toFixed(3)+')');
+      g.addColorStop(1,'rgba(255,80,0,0)');
+      ctx.globalCompositeOperation='lighter';
+      ctx.fillStyle=g;
+      ctx.fillRect(p.x-R*1.2,p.y-R*1.2,R*2.4,R*2.4);
+      ctx.globalCompositeOperation='source-over';
+    }
+  }
+}
+
+/* ---------------- HUD ---------------- */
+function drawHUD(){
+  if(phase!==PHASE.PLAYING && phase!==PHASE.PAUSED) return;
+  const rowH = IS_MOBILE ? 22 : 26;
+  const rowW = IS_MOBILE ? 160 : 190;
+  const startY = 10;
+  ctx.textBaseline='middle';
+  for(let i=0;i<players.length;i++){
+    const p=players[i];
+    const y=startY+i*rowH;
+    ctx.fillStyle='rgba(0,0,0,0.42)';
+    rr(10,y,rowW,rowH-3,5); ctx.fill();
+    ctx.fillStyle=p.color;
+    rr(14,y+4,12,rowH-11,3); ctx.fill();
+    ctx.textAlign='left';
+    ctx.font='bold 11px ui-monospace, monospace';
+    ctx.fillStyle=p.local?'#fff':'#ddd';
+    ctx.fillText(p.name + (p.local?' (you)':''),32,y+(rowH-3)/2);
+    const hpW=52, hpX=rowW-20;
+    ctx.fillStyle='rgba(255,255,255,0.16)';
+    rr(10+hpX,y+5,hpW,7,3); ctx.fill();
+    const hpFrac=clamp(p.hp/p.maxhp,0,1);
+    ctx.fillStyle=hpFrac>0.5?'#4ade80':hpFrac>0.25?'#fbbf24':'#ef4444';
+    rr(10+hpX,y+5,Math.max(2,hpW*hpFrac),7,3); ctx.fill();
+    ctx.textAlign='right';
+    ctx.font='10px ui-monospace, monospace';
+    ctx.fillStyle='#ffd76e';
+    ctx.fillText('🪵'+p.wood,10+rowW-8,y+(rowH-3)/2);
+  }
+  const s=(W<500)?0.72:1;
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.font='bold '+(24*s).toFixed(0)+'px ui-monospace, monospace';
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillText('NIGHT '+night+' / 99',W/2+2,14);
+  ctx.fillStyle='#ffffff';
+  ctx.fillText('NIGHT '+night+' / 99',W/2,12);
+  ctx.font='bold '+(12*s).toFixed(0)+'px ui-monospace, monospace';
+  ctx.fillStyle=isNight?'#8fb6ff':'#ffd76e';
+  ctx.fillText(isNight?'NIGHT — STAY WARM':'DAY — CHOP WOOD',W/2,40);
+  const fw=220*s,fx0=W/2-fw/2,fy0=56;
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  rr(fx0,fy0,fw,12*s,6); ctx.fill();
+  const ff=clamp(fire.fuel/fire.max,0,1);
+  ctx.fillStyle=fire.fuel>0?'#ff9f43':'#555';
+  rr(fx0+1.5,fy0+1.5,Math.max(2,(fw-3)*ff),9*s,5); ctx.fill();
+  ctx.font='bold 10px ui-monospace, monospace';
+  ctx.fillStyle='rgba(255,255,255,0.85)';
+  ctx.fillText('FIRE '+Math.ceil(fire.fuel),W/2,fy0+14*s);
+  if(msgTimer>0){
+    const a=clamp(msgTimer,0,1);
+    ctx.globalAlpha=a;
+    ctx.font='bold 24px ui-monospace, monospace';
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillText(msgText,W/2+2,H*0.30+2);
+    ctx.fillStyle='#ffe9a8';
+    ctx.fillText(msgText,W/2,H*0.30);
+    ctx.globalAlpha=1;
+  }
+  if(!IS_TOUCH){
+    ctx.font='11px ui-monospace, monospace';
+    ctx.fillStyle='rgba(255,255,255,0.42)';
+    ctx.textAlign='center';
+    ctx.fillText('MOVE: WASD/ARROWS   ACT: SPACE   CHAT: T   PAUSE: ESC', W/2, H-22);
+  }
+  if(gameOver){
+    ctx.fillStyle='rgba(0,0,0,0.78)';
+    ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center';
+    ctx.fillStyle='#ff5a5a';
+    ctx.font='bold 40px ui-monospace, monospace';
+    ctx.fillText('YOU DID NOT MAKE IT',W/2,H/2-60);
+    ctx.fillStyle='#ffffff';
+    ctx.font='bold 22px ui-monospace, monospace';
+    ctx.fillText('SURVIVED '+Math.max(0,night-1)+' NIGHTS',W/2,H/2+4);
+    ctx.fillStyle='rgba(255,255,255,0.65)';
+    ctx.font='15px ui-monospace, monospace';
+    const line = (net.mode==='guest') ? 'WAITING FOR HOST TO RESTART'
+                : (IS_TOUCH ? 'TAP PAUSE → QUIT TO RESTART' : 'PRESS  R  TO TRY AGAIN');
+    ctx.fillText(line, W/2, H/2+58);
+  }
+}
+
+/* =========================================================
+   NETWORKING — same-WiFi-only
+   ========================================================= */
+const LOBBY_ID = '99nights-forest-LAN-v3-8fj3k9-private';
+let phase = PHASE.MENU;
+let localName = '';
+
+/* --- chat --- */
+const chatMessages = [];
+function addChatMessage(name, text, type){
+  chatMessages.push({name, text, type:type||'user', t:Date.now()});
+  if(chatMessages.length > 60) chatMessages.shift();
+  renderChatLog();
+}
+function renderChatLog(){
+  const el=document.getElementById('chatLog');
+  if(!el) return;
+  const wasNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  let html='';
+  for(const m of chatMessages){
+    const cls = m.type==='sys' ? 'msg sys' : (m.type==='mine' ? 'msg mine' : 'msg');
+    const safeText=String(m.text).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
+    const safeName=String(m.name).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
+    if(m.type==='sys'){
+      html += '<div class="'+cls+'"><span class="name">*</span> <span>'+safeText+'</span></div>';
+    } else {
+      html += '<div class="'+cls+'"><span class="name">'+safeName+':</span> <span>'+safeText+'</span></div>';
+    }
+  }
+  el.innerHTML = html;
+  if(wasNearBottom) el.scrollTop = el.scrollHeight;
+}
+function openChat(open){ document.getElementById('chatWrap').classList.toggle('on', open); }
+function isChatOpen(){ return document.getElementById('chatWrap').classList.contains('on'); }
+
+function sendChat(text){
+  text = String(text||'').slice(0,120).trim();
+  if(!text) return;
+  if(net.mode==='host'){
+    addChatMessage(localName||'Host', text, 'mine');
+    broadcastChat(localName||'Host', text, null);
+  } else if(net.mode==='guest'){
+    if(net.dc && net.dc.open){ try{ net.dc.send({t:'chat', text}); }catch(e){} }
+    addChatMessage(localName||'You', text, 'mine');
+  } else {
+    addChatMessage(localName||'You', text, 'mine');
+  }
+}
+function broadcastChat(name, text, exceptPeerId){
+  const msg = {t:'chat', name, text};
+  if(net.mode==='host'){
+    for(const [peerId, g] of net.guests){
+      if(peerId===exceptPeerId) continue;
+      try{ if(g.conn && g.conn.open) g.conn.send(msg); }catch(e){}
+    }
+  }
+}
+
+function setPhase(p){
+  phase = p;
+  document.getElementById('menu').classList.toggle('hidden', p!==PHASE.MENU);
+  document.getElementById('searchOverlay').classList.toggle('hidden', p!==PHASE.SEARCH);
+  document.getElementById('waitOverlay').classList.toggle('hidden', p!==PHASE.WAIT);
+  document.getElementById('errorOverlay').classList.toggle('hidden', p!==PHASE.ERROR);
+  document.getElementById('pauseOverlay').classList.toggle('hidden', p!==PHASE.PAUSED);
+  const touchOn = IS_TOUCH && (p===PHASE.PLAYING);
+  document.getElementById('touchUI').classList.toggle('on', touchOn);
+  document.getElementById('topBtns').classList.toggle('on', p===PHASE.PLAYING);
+  if(p!==PHASE.PLAYING) openChat(false);
+}
+function setSearchStatus(t, cls){ const el=document.getElementById('searchStatus'); el.textContent=t; el.className='status '+(cls||''); }
+function setError(t, title){
+  document.getElementById('errTitle').textContent = title || 'CONNECTION FAILED';
+  document.getElementById('errorMsg').textContent = t;
+  setPhase(PHASE.ERROR);
+}
+function setNotSameWifiError(){
+  setError(
+    'You do not have the same Wi-Fi as this player. Please play with someone on the same Wi-Fi as you.',
+    '⚠ DIFFERENT WI-FI DETECTED'
+  );
+}
+
+/* *** Verify connection is truly LAN by inspecting WebRTC stats *** */
+async function verifySameWifi(conn){
+  return new Promise((resolve)=>{
+    // give ICE a moment to settle
+    setTimeout(async ()=>{
+      try{
+        const pc = conn.peerConnection || conn._pc || (conn._dc && conn._dc._pc);
+        if(!pc){ resolve(null); return; } // can't check → allow (since no STUN anyway)
+        const stats = await pc.getStats();
+        let selected = null;
+        stats.forEach(r=>{
+          if(r.type==='candidate-pair' && r.state==='succeeded' && (r.nominated || r.selected)){
+            selected = r;
+          }
+        });
+        if(!selected){ resolve(null); return; }
+        let localCand=null, remoteCand=null;
+        stats.forEach(r=>{
+          if(r.type==='local-candidate'  && r.id===selected.localCandidateId)  localCand=r;
+          if(r.type==='remote-candidate' && r.id===selected.remoteCandidateId) remoteCand=r;
+        });
+        // both must be 'host' type (direct LAN addresses — including mDNS .local)
+        const localOK  = localCand  && localCand.candidateType  === 'host';
+        const remoteOK = remoteCand && remoteCand.candidateType === 'host';
+        if(localOK && remoteOK){ resolve(true); return; }
+        // if either is srflx/prflx/relay → definitely not same LAN
+        resolve(false);
+      }catch(e){
+        resolve(null); // can't determine → allow
+      }
+    }, 900);
+  });
+}
+
+/* --- Online entry --- */
+function playOnline(){
+  localName = (document.getElementById('nameInput').value || '').trim() || ('P'+Math.floor(Math.random()*900+100));
+  setPhase(PHASE.SEARCH);
+  setSearchStatus('Searching for a host on your Wi-Fi...');
+  try{ startMatchmaking(); }catch(e){ setError(e.message||String(e)); }
+}
+
+function startMatchmaking(){
+  cleanupPeer();
+  // *** IMPORTANT: config with empty iceServers → no STUN, no TURN ***
+  const hostPeer = new Peer(LOBBY_ID, { debug: 1, config: LOCAL_ONLY_ICE });
+  let settled = false;
+
+  hostPeer.on('open', (id)=>{
+    if(settled) return;
+    settled = true;
+    net.mode='host';
+    net.peer=hostPeer;
+    net.myPeerId=id;
+    players.length=0;
+    players.push(makePlayer(0, localName||'Host', id, true));
+    genWorld((Math.random()*2**31)|0);
+    hostPeer.on('connection', onIncomingGuest);
+    hostPeer.on('call', onIncomingCall);
+    hostPeer.on('disconnected', ()=>{ try{ hostPeer.reconnect(); }catch(e){} });
+    setPhase(PHASE.WAIT);
+    updateHostCount();
+    setShareUrl();
+  });
+
+  hostPeer.on('error', (err)=>{
+    if(settled) return;
+    if(err.type==='unavailable-id'){
+      settled=true;
+      try{ hostPeer.destroy(); }catch(e){}
+      connectAsGuest();
+    } else if(err.type==='network' || err.type==='server-error' || err.type==='socket-error'){
+      setError('Could not reach matchmaking server. Check your internet connection.');
+    } else if(err.type==='browser-incompatible'){
+      setError('Your browser does not support WebRTC.');
+    } else {
+      setError('Connection error: ' + (err.message || err.type));
+    }
+  });
+
+  setTimeout(()=>{
+    if(!settled){
+      settled=true;
+      try{ hostPeer.destroy(); }catch(e){}
+      setError('Timed out connecting. Try again.');
+    }
+  }, 15000);
+}
+
+function connectAsGuest(){
+  setSearchStatus('Host found on your Wi-Fi — connecting...');
+  const guestPeer = new Peer({ debug: 1, config: LOCAL_ONLY_ICE });
+  net.peer = guestPeer;
+  net.mode = 'guest';
+
+  guestPeer.on('open', (id)=>{
+    net.myPeerId = id;
+    setSearchStatus('Joining game...');
+    const conn = guestPeer.connect(LOBBY_ID, { reliable: false });
+    net.dc = conn;
+
+    // *** Same-WiFi timeout: if we can't reach the host locally, they're not on our WiFi ***
+    const timeout = setTimeout(()=>{
+      if(!net.connected){
+        setNotSameWifiError();
+      }
+    }, 8000);
+
+    conn.on('open', async ()=>{
+      clearTimeout(timeout);
+      // verify the connection is truly local
+      const isLocal = await verifySameWifi(conn);
+      if(isLocal === false){
+        try{ conn.close(); }catch(e){}
+        net.connected = false;
+        setNotSameWifiError();
+        return;
+      }
+      net.connected = true;
+      try{ conn.send({ t:'hello', name: localName }); }catch(e){}
+    });
+
+    conn.on('data', (data)=>handleGuestMessage(data));
+
+    conn.on('close', ()=>{
+      net.connected = false;
+      if(phase===PHASE.PLAYING || phase===PHASE.PAUSED){
+        addChatMessage('*','HOST DISCONNECTED — continuing locally','sys');
+        msg('HOST DISCONNECTED',5);
+        net.mode='solo';
+        for(const p of players) p.local = (p.id===net.myPlayerId);
+      }
+    });
+
+    conn.on('error', (e)=>{
+      // ICE failure → almost always means "different network"
+      setNotSameWifiError();
+    });
+  });
+
+  guestPeer.on('error', (err)=>{
+    if(err.type==='peer-unavailable'){
+      setError('No host found on your Wi-Fi. Make sure someone else has clicked "Play Online" on the same Wi-Fi.');
+    } else if(err.type==='network' || err.type==='server-error'){
+      setError('Matchmaking server unreachable.');
+    } else {
+      setError('Connection error: ' + (err.message || err.type));
+    }
+  });
+
+  setTimeout(()=>{
+    if(!net.connected && phase===PHASE.SEARCH) setNotSameWifiError();
+  }, 12000);
+}
+
+function onIncomingGuest(conn){
+  if(players.length >= MAX_PLAYERS){
+    try{
+      conn.on('open', ()=>{
+        try{ conn.send({t:'full'}); }catch(e){}
+        setTimeout(()=>{ try{ conn.close(); }catch(e){} }, 500);
+      });
+    }catch(e){}
+    return;
+  }
+  const peerId = conn.peer;
+  const entry = { conn, playerId:null, name:'Guest', lastKeys:{} };
+  net.guests.set(peerId, entry);
+
+  conn.on('data', async (data)=>{
+    if(!data || typeof data!=='object') return;
+    if(data.t==='hello'){
+      entry.name = (data.name||'').slice(0,14) || ('P'+(players.length+1));
+      // verify the connection is truly local before accepting
+      const isLocal = await verifySameWifi(conn);
+      if(isLocal === false){
+        try{ conn.close(); }catch(e){}
+        net.guests.delete(peerId);
+        return;
+      }
+      const pid = nextFreePlayerId();
+      entry.playerId = pid;
+      const np = makePlayer(pid, entry.name, peerId, false);
+      players.push(np);
+      try{
+        conn.send({
+          t:'welcome', playerId: pid, seed: net.seed,
+          players: serializePlayerList(), hostName: localName
+        });
+      }catch(e){}
+      broadcastPlayerList();
+      addChatMessage('*', entry.name + ' joined', 'sys');
+      broadcastChat('*', entry.name + ' joined', peerId);
+      updateHostCount();
+    }
+    else if(data.t==='in'){
+      entry.lastKeys = data.k || {};
+      entry.lastSeen = performance.now();
+    }
+    else if(data.t==='chat'){
+      const nm = entry.name || 'Guest';
+      addChatMessage(nm, data.text, 'user');
+      broadcastChat(nm, data.text, peerId);
+    }
+  });
+
+  conn.on('close', ()=>{
+    const e = net.guests.get(peerId);
+    if(e && e.playerId!=null){
+      const idx = players.findIndex(p=>p.id===e.playerId);
+      if(idx>=0){
+        const p = players[idx];
+        addChatMessage('*', p.name + ' left', 'sys');
+        broadcastChat('*', p.name + ' left', peerId);
+        players.splice(idx,1);
+      }
+    }
+    net.guests.delete(peerId);
+    broadcastPlayerList();
+    updateHostCount();
+    cleanupVoicePeer(peerId);
+  });
+  conn.on('error', ()=>{});
+}
+
+function nextFreePlayerId(){
+  const used = new Set(players.map(p=>p.id));
+  for(let i=0;i<MAX_PLAYERS+2;i++) if(!used.has(i)) return i;
+  return players.length;
+}
+function updateHostCount(){
+  const el=document.getElementById('hostCount');
+  if(el) el.textContent = net.guests.size + ' player' + (net.guests.size===1?'':'s') + ' connected (you are #1)';
+}
+function serializePlayerList(){
+  return players.map(p=>({id:p.id, name:p.name, peerId:p.peerId}));
+}
+function broadcastPlayerList(){
+  if(net.mode!=='host') return;
+  const msg = { t:'players', list: serializePlayerList() };
+  for(const g of net.guests.values()){
+    try{ if(g.conn && g.conn.open) g.conn.send(msg); }catch(e){}
+  }
+}
+
+function handleGuestMessage(data){
+  if(!data || typeof data!=='object') return;
+  if(data.t==='full'){ setError('Game is full. Try again later.'); return; }
+  if(data.t==='welcome'){
+    net.myPlayerId = data.playerId;
+    genWorld(data.seed);
+    players.length = 0;
+    for(const p of data.players){
+      const np = makePlayer(p.id, p.name, p.peerId, p.id===net.myPlayerId);
+      players.push(np);
+    }
+    if(!players.find(p=>p.id===net.myPlayerId)){
+      players.push(makePlayer(net.myPlayerId, localName||'You', net.myPeerId, true));
+    }
+    setPhase(PHASE.PLAYING);
+    msg('SURVIVE 99 NIGHTS',3);
+    addChatMessage('*','Connected to host on your Wi-Fi','sys');
+    renderChatLog();
+  }
+  else if(data.t==='st'){ applyState(data); }
+  else if(data.t==='players'){ applyPlayerList(data.list); }
+  else if(data.t==='chat'){
+    const nm = data.name || '?';
+    const type = (nm === localName) ? 'mine' : (nm==='*' ? 'sys' : 'user');
+    addChatMessage(nm, data.text, type);
+  }
+}
+
+function applyPlayerList(list){
+  const incoming = new Map(list.map(x=>[x.id, x]));
+  for(let i=players.length-1;i>=0;i--){
+    const p = players[i];
+    if(p.id===net.myPlayerId) continue;
+    if(!incoming.has(p.id)) players.splice(i,1);
+  }
+  for(const [id, info] of incoming){
+    let p = players.find(q=>q.id===id);
+    if(!p){
+      p = makePlayer(id, info.name, info.peerId, id===net.myPlayerId);
+      players.push(p);
+    } else {
+      p.name = info.name;
+      p.peerId = info.peerId;
+      p.local = (id===net.myPlayerId);
+    }
+  }
+  players.sort((a,b)=>a.id-b.id);
+}
+
+function packTrees(){
+  let s='';
+  for(const t of trees) s += (t.alive ? (t.hp|0) : 0).toString();
+  return s;
+}
+function sendHostState(){
+  if(net.mode!=='host') return;
+  if(net.guests.size===0) return;
+  const s = {
+    t:'st',
+    p: players.map(p=>({
+      id:p.id, x:p.x, z:p.z, hp:p.hp, wood:p.wood, face:p.face,
+      walk:p.walk, dead:p.dead, respawn:p.respawn,
+      hurt:p.hurt, swing:p.swing, atkCd:p.atkCd
+    })),
+    w: wolves.map(w=>({ id:w.id, x:w.x, z:w.z, hp:w.hp, vx:w.vx, hurt:w.hurt })),
+    f: fire.fuel,
+    tr: packTrees(),
+    n: night, l: light, isNight: isNight, ct: cycleT, go: gameOver
+  };
+  for(const g of net.guests.values()){
+    try{ if(g.conn && g.conn.open) g.conn.send(s); }catch(e){}
+  }
+}
+function applyState(s){
+  for(const sp of s.p){
+    let p = players.find(q=>q.id===sp.id);
+    if(!p){
+      p = makePlayer(sp.id, 'P'+(sp.id+1), null, sp.id===net.myPlayerId);
+      players.push(p);
+    }
+    p.x = lerp(p.x, sp.x, 0.45);
+    p.z = lerp(p.z, sp.z, 0.45);
+    p.hp=sp.hp; p.wood=sp.wood; p.face=sp.face; p.walk=sp.walk;
+    p.dead=sp.dead; p.respawn=sp.respawn;
+    p.hurt=sp.hurt; p.swing=sp.swing; p.atkCd=sp.atkCd;
+  }
+  players.sort((a,b)=>a.id-b.id);
+  const incoming = new Set();
+  for(const sw of s.w){
+    incoming.add(sw.id);
+    let w = wolves.find(q=>q.id===sw.id);
+    if(!w){
+      w = { id:sw.id, x:sw.x, z:sw.z, hp:sw.hp, maxhp:sw.hp, vx:sw.vx, hurt:sw.hurt, seed:0, spd:5, dmg:8, cd:1 };
+      wolves.push(w);
+    } else {
+      w.x=sw.x; w.z=sw.z; w.hp=sw.hp; w.vx=sw.vx; w.hurt=sw.hurt;
+    }
+  }
+  for(let i=wolves.length-1;i>=0;i--){
+    if(!incoming.has(wolves[i].id)){
+      burst(wolves[i].x,0.8,wolves[i].z,10,'#7f2b2b',3,0.8);
+      wolves.splice(i,1);
+    }
+  }
+  if(s.tr){
+    for(let i=0;i<s.tr.length && i<trees.length;i++){
+      const v = s.tr.charCodeAt(i)-48;
+      const t = trees[i];
+      if(v===0){ if(t.alive){ burst(t.x,1.4,t.z,10,'#4d7c3a',3,0.9); } t.alive=false; }
+      else { t.alive=true; t.hp=v; }
+    }
+  }
+  fire.fuel=s.f; night=s.n; light=s.l; isNight=s.isNight;
+  gameOver=s.go; cycleT=s.ct;
+}
+
+/* =========================================================
+   VOICE CHAT (same-LAN only)
+   ========================================================= */
+async function toggleVoice(){
+  if(net.voiceEnabled){ disableVoice(); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+    net.voiceStream = stream;
+    net.voiceEnabled = true;
+    document.getElementById('btnVoice').classList.add('on');
+    addChatMessage('*','Voice chat enabled (Wi-Fi only)','sys');
+    for(const p of players){
+      if(p.peerId && p.peerId !== net.myPeerId) maybeCallVoice(p.peerId);
+    }
+  }catch(e){
+    addChatMessage('*','Mic access denied or unavailable','sys');
+  }
+}
+function disableVoice(){
+  net.voiceEnabled = false;
+  document.getElementById('btnVoice').classList.remove('on');
+  document.getElementById('btnVoice').classList.add('muted');
+  if(net.voiceStream){
+    for(const tr of net.voiceStream.getTracks()) tr.stop();
+    net.voiceStream=null;
+  }
+  for(const [pid, call] of net.voicePeers){
+    try{ if(call && call.close) call.close(); }catch(e){}
+  }
+  net.voicePeers.clear();
+  for(const [pid, el] of net.voiceAudioEls){
+    try{ el.pause(); el.srcObject=null; el.remove(); }catch(e){}
+  }
+  net.voiceAudioEls.clear();
+  addChatMessage('*','Voice chat disabled','sys');
+}
+function cleanupVoicePeer(peerId){
+  if(net.voicePeers.has(peerId)){
+    try{ const c=net.voicePeers.get(peerId); if(c && c.close) c.close(); }catch(e){}
+    net.voicePeers.delete(peerId);
+  }
+  const el=net.voiceAudioEls.get(peerId);
+  if(el){ try{ el.pause(); el.srcObject=null; el.remove(); }catch(e){} net.voiceAudioEls.delete(peerId); }
+}
+function maybeCallVoice(peerId){
+  if(!net.voiceEnabled || !net.voiceStream) return;
+  if(!peerId || peerId===net.myPeerId) return;
+  if(net.voicePeers.has(peerId)) return;
+  if(net.myPeerId && net.myPeerId > peerId) return; // other side calls us
+  try{
+    const call = net.peer.call(peerId, net.voiceStream, { config: LOCAL_ONLY_ICE });
+    net.voicePeers.set(peerId, call);
+    call.on('stream', (remoteStream)=>attachRemoteAudio(peerId, remoteStream));
+    call.on('close', ()=>cleanupVoicePeer(peerId));
+    call.on('error', ()=>cleanupVoicePeer(peerId));
+  }catch(e){}
+}
+function onIncomingCall(call){
+  const peerId = call.peer;
+  call.on('stream', (remoteStream)=>attachRemoteAudio(peerId, remoteStream));
+  call.on('close', ()=>cleanupVoicePeer(peerId));
+  call.on('error', ()=>cleanupVoicePeer(peerId));
+  try{
+    if(net.voiceStream) call.answer(net.voiceStream);
+    else call.answer();
+    net.voicePeers.set(peerId, call);
+  }catch(e){}
+}
+function attachRemoteAudio(peerId, stream){
+  let el = net.voiceAudioEls.get(peerId);
+  if(!el){
+    el = document.createElement('audio');
+    el.autoplay=true; el.playsInline=true; el.style.display='none';
+    document.body.appendChild(el);
+    net.voiceAudioEls.set(peerId, el);
+  }
+  try{ el.srcObject=stream; el.play().catch(()=>{}); }catch(e){}
+}
+
+/* =========================================================
+   CLEANUP
+   ========================================================= */
+function cleanupPeer(){
+  disableVoice();
+  if(net.dc){ try{ net.dc.close(); }catch(e){} net.dc=null; }
+  for(const g of net.guests.values()){
+    try{ if(g.conn) g.conn.close(); }catch(e){}
+  }
+  net.guests.clear();
+  if(net.peer){ try{ net.peer.destroy(); }catch(e){} net.peer=null; }
+  net.connected=false;
+  net.myPeerId=null;
+}
+function setShareUrl(){
+  const url = location.href.split('#')[0];
+  document.getElementById('shareUrl').textContent = url;
+}
+
+/* =========================================================
+   TOUCH CONTROLS
+   ========================================================= */
+(function initTouch(){
+  const base = document.getElementById('joyBase');
+  const knob = document.getElementById('joyKnob');
+  const btnAction = document.getElementById('btnAction');
+  let joyId = null;
+  let baseRect = null;
+  function getBaseCenter(){ baseRect = base.getBoundingClientRect(); return {x:baseRect.left+baseRect.width/2, y:baseRect.top+baseRect.height/2}; }
+  const maxR = ()=> base.getBoundingClientRect().width * 0.42;
+  function updateJoy(clientX, clientY){
+    if(!baseRect) getBaseCenter();
+    const c = { x: baseRect.left+baseRect.width/2, y: baseRect.top+baseRect.height/2 };
+    let dx = clientX - c.x, dy = clientY - c.y;
+    const R = maxR();
+    const len = Math.hypot(dx,dy);
+    if(len > R){ dx = dx/len*R; dy = dy/len*R; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    touch.joyX = dx / R;
+    touch.joyZ = dy / R;
+  }
+  function resetJoy(){ knob.style.transform='translate(0,0)'; touch.joyX=0; touch.joyZ=0; joyId=null; }
+  base.addEventListener('touchstart', e=>{ e.preventDefault(); if(joyId!==null)return; const t=e.changedTouches[0]; joyId=t.identifier; getBaseCenter(); updateJoy(t.clientX,t.clientY); }, {passive:false});
+  base.addEventListener('touchmove', e=>{ e.preventDefault(); for(const t of e.changedTouches){ if(t.identifier===joyId){ updateJoy(t.clientX,t.clientY); break; } } }, {passive:false});
+  const endJoy = e=>{ for(const t of e.changedTouches){ if(t.identifier===joyId){ resetJoy(); break; } } };
+  base.addEventListener('touchend', endJoy, {passive:false});
+  base.addEventListener('touchcancel', endJoy, {passive:false});
+  btnAction.addEventListener('touchstart', e=>{ e.preventDefault(); touch.actionDown=true; touch.actionJustPressed=true; }, {passive:false});
+  btnAction.addEventListener('touchend', e=>{ e.preventDefault(); touch.actionDown=false; }, {passive:false});
+  btnAction.addEventListener('touchcancel', ()=>{ touch.actionDown=false; }, {passive:false});
+  btnAction.addEventListener('mousedown', e=>{ e.preventDefault(); touch.actionDown=true; touch.actionJustPressed=true; });
+  btnAction.addEventListener('mouseup', ()=>{ touch.actionDown=false; });
+  btnAction.addEventListener('mouseleave', ()=>{ touch.actionDown=false; });
+})();
+
+/* =========================================================
+   UI WIRING
+   ========================================================= */
+document.getElementById('btnSolo').addEventListener('click', ()=>{
+  cleanupPeer();
+  net.mode='solo';
+  players.length=0;
+  players.push(makePlayer(0,'P1', null, true));
+  players.push(makePlayer(1,'P2', null, false));
+  localName = (document.getElementById('nameInput').value||'').trim() || 'You';
+  players[0].name = localName;
+  resetGame();
+  openChat(true);
+  setPhase(PHASE.PLAYING);
+});
+document.getElementById('btnOnline').addEventListener('click', ()=>{ playOnline(); });
+document.getElementById('btnSearchCancel').addEventListener('click', ()=>{ cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU); });
+document.getElementById('btnWaitCancel').addEventListener('click', ()=>{ cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU); });
+document.getElementById('btnErrBack').addEventListener('click', ()=>{ cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU); });
+document.getElementById('btnStartSolo').addEventListener('click', ()=>{
+  setPhase(PHASE.PLAYING); openChat(true); msg('SURVIVE 99 NIGHTS',3);
+});
+document.getElementById('btnCopyUrl').addEventListener('click', ()=>{
+  const url = document.getElementById('shareUrl').textContent;
+  try{ navigator.clipboard.writeText(url); }catch(e){}
+  const btn = document.getElementById('btnCopyUrl');
+  const o = btn.textContent; btn.textContent='Copied!';
+  setTimeout(()=>{ btn.textContent=o; }, 1200);
+});
+document.getElementById('btnResume').addEventListener('click', ()=>{ setPhase(PHASE.PLAYING); });
+document.getElementById('btnQuit').addEventListener('click', ()=>{
+  cleanupPeer(); net.mode='solo';
+  players.length=0; players.push(makePlayer(0,'P1',null,true));
+  resetGame(); setPhase(PHASE.MENU);
+});
+document.getElementById('btnVoice').addEventListener('click', toggleVoice);
+document.getElementById('btnChat').addEventListener('click', ()=>{
+  const open = !isChatOpen();
+  openChat(open);
+  if(open) setTimeout(()=>document.getElementById('chatInput').focus(), 30);
+});
+document.getElementById('btnPause').addEventListener('click', ()=>{
+  if(phase===PHASE.PLAYING) setPhase(PHASE.PAUSED);
+  else if(phase===PHASE.PAUSED) setPhase(PHASE.PLAYING);
+});
+document.getElementById('chatSend').addEventListener('click', ()=>{
+  const el=document.getElementById('chatInput');
+  sendChat(el.value); el.value=''; el.focus();
+});
+document.getElementById('chatInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); const el=e.target; sendChat(el.value); el.value=''; }
+});
+window.addEventListener('keydown', e=>{
+  if(typing()) return;
+  if(e.code==='KeyT' && phase===PHASE.PLAYING){
+    e.preventDefault(); openChat(true);
+    setTimeout(()=>document.getElementById('chatInput').focus(), 30);
+  }
+  if(e.code==='Escape'){
+    if(typing()){ document.activeElement.blur(); return; }
+    if(phase===PHASE.PLAYING) setPhase(PHASE.PAUSED);
+    else if(phase===PHASE.PAUSED) setPhase(PHASE.PLAYING);
+  }
+  if(e.code==='KeyR' && phase===PHASE.PLAYING && gameOver && (net.mode==='host'||net.mode==='solo')){
+    if(net.mode==='host'){
+      const seed=(Math.random()*2**31)|0;
+      for(const g of net.guests.values()){
+        try{ if(g.conn && g.conn.open) g.conn.send({t:'welcome', playerId:g.playerId, seed, players:serializePlayerList(), hostName:localName}); }catch(e){}
+      }
+      genWorld(seed);
+    } else { resetGame(); }
+  }
+});
+try{
+  const saved = localStorage.getItem('99n_name');
+  if(saved) document.getElementById('nameInput').value = saved;
+}catch(e){}
+document.getElementById('nameInput').addEventListener('change', (e)=>{
+  try{ localStorage.setItem('99n_name', e.target.value); }catch(_){}
+});
+window.addEventListener('beforeunload', ()=>{ cleanupPeer(); });
+
+/* =========================================================
+   MAIN LOOP
+   ========================================================= */
+let last = performance.now();
+function sendGuestInput(){
+  if(net.mode!=='guest' || !net.dc || !net.dc.open) return;
+  const nowMs = performance.now();
+  if(nowMs - net.lastSendT < 40) return;
+  net.lastSendT = nowMs;
+  const k = {};
+  for(const c in keys){ if(keys[c]) k[c]=true; }
+  k.__tx = touch.joyX;
+  k.__tz = touch.joyZ;
+  if(touch.actionJustPressed) k.__act = true;
+  try{ net.dc.send({ t:'in', k }); }catch(e){}
+}
+function tick(dt){
+  if(phase!==PHASE.PLAYING && phase!==PHASE.PAUSED) return;
+  if(phase===PHASE.PAUSED){ now += dt*0.15; return; }
+  if(net.mode==='guest'){
+    sendGuestInput();
+    now += dt;
+    if(msgTimer>0) msgTimer -= dt;
+    return;
+  }
+  simulate(dt);
+  touch.actionJustPressed = false;
+  if(net.mode==='host'){
+    const t = performance.now();
+    if(t - net.lastStateT > 50){ net.lastStateT=t; sendHostState(); }
+    if(net.voiceEnabled){
+      if(!net._voiceTick || performance.now() - net._voiceTick > 3000){
+        net._voiceTick = performance.now();
+        for(const p of players){
+          if(p.peerId && p.peerId !== net.myPeerId) maybeCallVoice(p.peerId);
+        }
+      }
+    }
+  }
+}
+function frame(t){
+  const dt = Math.min(0.05, (t-last)/1000);
+  last = t;
+  tick(dt);
+  render();
+  drawHUD();
+  for(const k in pressed) delete pressed[k];
+  requestAnimationFrame(frame);
+}
+players.push(makePlayer(0,'P1', null, true));
+players.push(makePlayer(1,'P2', null, false));
+genWorld((Math.random()*2**31)|0);
+setPhase(PHASE.MENU);
+msg('SURVIVE 99 NIGHTS',3);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
