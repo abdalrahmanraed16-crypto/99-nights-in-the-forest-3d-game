@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>99 Nights in the Forest — Same WiFi Co-op</title>
+<title>99 Nights in the Forest — Online Co-op</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{width:100%;height:100%;overflow:hidden;background:#05070d;
@@ -53,6 +53,8 @@
     vertical-align:middle;margin-right:6px;
   }
   @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* top-right buttons */
   #topBtns{
     position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));
     z-index:7;display:none;gap:8px;
@@ -63,29 +65,42 @@
     background:rgba(0,0,0,0.55);border:1.5px solid rgba(255,255,255,0.3);
     display:flex;align-items:center;justify-content:center;
     color:#fff;font-size:18px;font-family:inherit;cursor:pointer;
+    position:relative;
   }
   .iconBtn:active{transform:scale(0.94)}
   .iconBtn.muted{color:#777;border-color:#444}
   .iconBtn.on{color:#7affa0;border-color:#7affa0}
+
+  /* chat */
   #chatWrap{
     position:fixed;left:max(10px,env(safe-area-inset-left));
     bottom:calc(max(10px,env(safe-area-inset-bottom)) + 155px);
-    z-index:6;width:min(320px,62vw);pointer-events:none;display:none;
+    z-index:6;width:min(320px,62vw);pointer-events:none;
+    display:none;
   }
   #chatWrap.on{display:block}
   #chatLog{
     max-height:150px;overflow-y:auto;padding:6px 10px;
     background:rgba(0,0,0,0.45);border-radius:8px;
-    font-size:11px;line-height:1.45;pointer-events:auto;touch-action:pan-y;
+    font-size:11px;line-height:1.45;
+    pointer-events:auto;touch-action:pan-y;
     border:1px solid rgba(255,255,255,0.08);
   }
   #chatLog .msg{margin:2px 0}
   #chatLog .msg .name{color:#8fb6ff;font-weight:bold}
   #chatLog .msg.sys .name{color:#888}
   #chatLog .msg.mine .name{color:#7affa0}
-  #chatInputRow{display:flex;gap:6px;margin-top:6px;pointer-events:auto}
-  #chatInput{flex:1;font-size:12px;padding:7px 10px}
-  #chatSend{min-width:44px;padding:7px 10px;margin:0;border-radius:6px;font-size:12px}
+  #chatInputRow{
+    display:flex;gap:6px;margin-top:6px;pointer-events:auto;
+  }
+  #chatInput{
+    flex:1;font-size:12px;padding:7px 10px;
+  }
+  #chatSend{
+    min-width:44px;padding:7px 10px;margin:0;border-radius:6px;font-size:12px;
+  }
+
+  /* touch controls */
   #touchUI{position:fixed;inset:0;z-index:5;pointer-events:none;display:none}
   #touchUI.on{display:block}
   #joyBase{
@@ -101,7 +116,8 @@
     margin-left:-28px;margin-top:-28px;border-radius:50%;
     background:radial-gradient(circle at 35% 30%,rgba(120,180,255,0.9),rgba(60,110,180,0.85));
     border:2px solid rgba(255,255,255,0.4);
-    box-shadow:0 4px 14px rgba(0,0,0,0.5);pointer-events:none;
+    box-shadow:0 4px 14px rgba(0,0,0,0.5);
+    pointer-events:none;
   }
   #btnAction{
     position:absolute;right:max(22px,env(safe-area-inset-right));
@@ -112,7 +128,8 @@
     box-shadow:0 6px 20px rgba(255,120,40,0.35);
     pointer-events:auto;touch-action:none;
     display:flex;align-items:center;justify-content:center;
-    font-family:inherit;font-weight:bold;font-size:12px;color:#fff;letter-spacing:1px;
+    font-family:inherit;font-weight:bold;font-size:12px;color:#fff;
+    letter-spacing:1px;
   }
   #btnAction:active{transform:scale(0.93)}
   @media (max-width:560px){
@@ -146,6 +163,7 @@
   <div id="btnAction">CHOP<br>/ACT</div>
 </div>
 
+<!-- MENU -->
 <div class="overlay" id="menu">
   <h1>99 NIGHTS IN THE FOREST</h1>
   <div class="subtitle">Survive the wolves. Keep the fire alive.</div>
@@ -153,40 +171,39 @@
     <input id="nameInput" type="text" placeholder="Your name" maxlength="14" autocomplete="off">
   </div>
   <button id="btnSolo">Solo / Local Co-op</button>
-  <button id="btnOnline">Play Online (same Wi-Fi only)</button>
-  <div class="step" style="margin-top:14px;color:#f0b060;font-size:11px">
-    ⚠ Only works if both players are on the <b>same Wi-Fi network</b>.
-  </div>
-  <div class="step" style="margin-top:14px;color:#556">
+  <button id="btnOnline">Play Online (matchmaking)</button>
+  <div class="step" style="margin-top:22px;color:#556">
     <div id="hintDesktop">P1: WASD + SPACE &nbsp;|&nbsp; P2: ARROWS + ENTER</div>
     <div id="hintMobile" class="hidden">TOUCH: joystick to move &nbsp;|&nbsp; big button to act</div>
   </div>
 </div>
 
+<!-- SEARCH -->
 <div class="overlay hidden" id="searchOverlay">
-  <h2><span class="spinner"></span>LOOKING ON YOUR WI-FI...</h2>
-  <div class="status" id="searchStatus">Searching for a host on your network</div>
+  <h2><span class="spinner"></span>FINDING A GAME...</h2>
+  <div class="status" id="searchStatus">Connecting to matchmaking server</div>
   <button id="btnSearchCancel" class="secondary" style="margin-top:20px">Cancel</button>
 </div>
 
+<!-- HOST WAIT -->
 <div class="overlay hidden" id="waitOverlay">
-  <h2>WAITING FOR PLAYER ON YOUR WI-FI</h2>
+  <h2>YOU ARE HOSTING</h2>
   <div class="status ok" id="hostCount">0 players connected</div>
-  <div class="step" style="margin-top:10px">
-    Anyone on the <b>same Wi-Fi</b> who opens this URL and clicks "Play Online" will join you.
-  </div>
+  <div class="step" style="margin-top:14px">Share this URL with anyone — they open it and click "Play Online".</div>
   <div class="url-box" id="shareUrl">—</div>
   <button id="btnCopyUrl">Copy Game URL</button>
   <button id="btnStartSolo" class="secondary" style="margin-top:14px">Start Playing Now (others can join later)</button>
   <button id="btnWaitCancel" class="secondary">Cancel</button>
 </div>
 
+<!-- ERROR -->
 <div class="overlay hidden" id="errorOverlay">
-  <h2 style="color:#ff7a7a" id="errTitle">CONNECTION FAILED</h2>
+  <h2 style="color:#ff7a7a">CONNECTION FAILED</h2>
   <div class="status error" id="errorMsg">—</div>
   <button id="btnErrBack" class="secondary" style="margin-top:20px">Back</button>
 </div>
 
+<!-- PAUSE -->
 <div class="overlay hidden" id="pauseOverlay">
   <h2>PAUSED</h2>
   <button id="btnResume">Resume</button>
@@ -198,8 +215,8 @@
 "use strict";
 
 /* =========================================================
-   99 Nights — Same-WiFi-only Co-op
-   STUN/TURN disabled → only local LAN connections possible
+   99 NIGHTS IN THE FOREST — Online (unlimited players)
+   Voice chat + text chat + mobile + host-keeps-playing
    ========================================================= */
 
 const cvs = document.getElementById('game');
@@ -208,9 +225,6 @@ let W = 1, H = 1, DPR = 1;
 const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 const IS_MOBILE = IS_TOUCH && Math.min(window.innerWidth, window.innerHeight) < 900;
 const MAX_PLAYERS = 8;
-
-/* *** Critical: no STUN, no TURN → only LAN connections *** */
-const LOCAL_ONLY_ICE = { iceServers: [] };
 
 function resize(){
   const rawDPR = window.devicePixelRatio || 1;
@@ -306,35 +320,38 @@ const PHASE={MENU:0, SEARCH:1, WAIT:2, PLAYING:3, ERROR:4, PAUSED:5};
 
 /* ---------------- net state ---------------- */
 const net={
-  mode:'solo',
+  mode:'solo',        // 'solo' | 'host' | 'guest'
   peer:null,
-  dc:null,
-  guests:new Map(),
+  dc:null,            // guest: connection to host
+  hostConn:null,      // alias
+  guests:new Map(),   // host: peerId -> { conn, playerId, name, lastKeys, lastSeen }
   connected:false,
   lastSendT:0,
   lastStateT:0,
   seed:0,
   myPeerId:null,
+  hostPeerId:null,    // fixed lobby id
   myPlayerId:0,
   voiceEnabled:false,
   voiceStream:null,
-  voicePeers:new Map(),
-  voiceAudioEls:new Map()
+  voicePeers:new Set(),    // remote peer IDs we have an active call with
+  remoteStreams:new Map(), // peerId -> MediaStream for voice
+  voiceAudioEls:new Map()  // peerId -> HTMLAudioElement
 };
 
 /* ---------------- players (dynamic) ---------------- */
 const PLAYER_COLORS = [
-  {c:'#4fa8ff', d:'#255f9c'},
-  {c:'#ff8a4f', d:'#a8501f'},
-  {c:'#8aff6b', d:'#3fa825'},
-  {c:'#ff6bd6', d:'#a8258a'},
-  {c:'#ffdd44', d:'#a88a1f'},
-  {c:'#a86bff', d:'#5a258a'},
-  {c:'#6bffff', d:'#258a8a'},
-  {c:'#ff6b6b', d:'#a82525'}
+  {c:'#4fa8ff', d:'#255f9c'}, // blue
+  {c:'#ff8a4f', d:'#a8501f'}, // orange
+  {c:'#8aff6b', d:'#3fa825'}, // green
+  {c:'#ff6bd6', d:'#a8258a'}, // pink
+  {c:'#ffdd44', d:'#a88a1f'}, // yellow
+  {c:'#a86bff', d:'#5a258a'}, // purple
+  {c:'#6bffff', d:'#258a8a'}, // cyan
+  {c:'#ff6b6b', d:'#a82525'}  // red
 ];
 
-const players=[];
+const players=[];   // array of player objects
 
 function makePlayer(id, name, peerId, isLocal){
   const col = PLAYER_COLORS[id % PLAYER_COLORS.length];
@@ -344,11 +361,15 @@ function makePlayer(id, name, peerId, isLocal){
     hp:100, maxhp:100, wood:0,
     face:0, atkCd:0, swing:0, walk:0,
     dead:false, respawn:0, hurt:0,
-    color: col.c, dark: col.d, ghostT:0
+    color: col.c, dark: col.d,
+    ghostT:0    // countdown for disconnected player fading out
   };
 }
+
 function getLocalPlayer(){
   if(net.mode==='guest') return players.find(p=>p.id===net.myPlayerId) || null;
+  if(net.mode==='host') return players.find(p=>p.id===0) || null;
+  // solo: local player 0
   return players.find(p=>p.id===0) || players[0] || null;
 }
 
@@ -357,9 +378,11 @@ const WORLD_R=95;
 const CYCLE=100;
 const DAY_FRAC=0.55;
 const RESPAWN_T=40;
+
 let now=0,cycleT=0,light=1,isNight=false,night=0;
 let gameOver=false;
 let msgText='',msgTimer=0;
+
 const trees=[],rocks=[],wolves=[],particles=[],sprites=[];
 const stars=[];
 const fire={x:0,z:0,fuel:80,max:170};
@@ -375,22 +398,28 @@ function genWorld(seed){
   trees.length=0;rocks.length=0;wolves.length=0;particles.length=0;
   nextWolfId=1;
   for(let i=0;i<175;i++){
-    const a=rand()*Math.PI*2, r=7+Math.pow(rand(),0.65)*88;
-    trees.push({x:Math.cos(a)*r, z:Math.sin(a)*r,
+    const a=rand()*Math.PI*2;
+    const r=7+Math.pow(rand(),0.65)*88;
+    trees.push({
+      x:Math.cos(a)*r, z:Math.sin(a)*r,
       h:5.5+rand()*4.5, w:2.3+rand()*1.4,
-      hp:3, alive:true, timer:0, seed:rand(), shake:0});
+      hp:3, alive:true, timer:0, seed:rand(), shake:0
+    });
   }
   for(let i=0;i<28;i++){
-    const a=rand()*Math.PI*2, r=9+rand()*72;
+    const a=rand()*Math.PI*2;
+    const r=9+rand()*72;
     rocks.push({x:Math.cos(a)*r, z:Math.sin(a)*r, s:0.8+rand()*0.9, seed:rand()});
   }
   fire.x=0; fire.z=0; fire.fuel=80;
   cycleT=0; night=0; isNight=false; light=1;
   gameOver=false;
   cam.x=0; cam.y=13; cam.z=20;
+  // reposition existing players
   for(let i=0;i<players.length;i++){
     const p=players[i];
-    p.x=-2+(i*1.4); p.z=4+Math.floor(i/3)*1.4;
+    p.x = -2 + (i*1.4);
+    p.z = 4 + Math.floor(i/3)*1.4;
     p.hp=100; p.wood=0; p.dead=false; p.respawn=0;
     p.atkCd=0; p.swing=0; p.hurt=0; p.walk=0; p.face=0;
   }
@@ -401,31 +430,40 @@ function resetGame(seed){
   msgText='';msgTimer=0;
   msg('SURVIVE 99 NIGHTS',3);
 }
+
+/* ---------------- messages ---------------- */
 function msg(t,dur){ msgText=t; msgTimer=dur; }
 
+/* ---------------- particles ---------------- */
 function burst(x,y,z,n,col,spd,life){
   if(IS_MOBILE) n = Math.max(3, Math.floor(n*0.55));
   for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2, p=Math.random()*spd;
+    const a=Math.random()*Math.PI*2;
+    const p=Math.random()*spd;
     particles.push({x,y:y+Math.random()*0.6,z,
       vx:Math.cos(a)*p,vy:rnd(1.5,4.5),vz:Math.sin(a)*p,
       life:life*rnd(0.6,1.2),max:life,col});
   }
 }
 
+/* ---------------- wolves ---------------- */
 function spawnWolves(){
   const n=Math.min(3+Math.floor(night*0.75)+Math.floor(players.length*0.5), 20);
   for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2, r=rnd(42,62);
-    wolves.push({id:nextWolfId++,
+    const a=Math.random()*Math.PI*2;
+    const r=rnd(42,62);
+    wolves.push({
+      id:nextWolfId++,
       x:fire.x+Math.cos(a)*r, z:fire.z+Math.sin(a)*r,
       hp:3+Math.floor(night/6), maxhp:3+Math.floor(night/6),
       spd:rnd(4.6,5.6)+night*0.05,
       dmg:7+night*0.55, cd:rnd(0.4,1.2),
-      hurt:0,vx:1,seed:Math.random()*10});
+      hurt:0,vx:1,seed:Math.random()*10
+    });
   }
 }
 
+/* ---------------- player action ---------------- */
 function doAttack(p){
   let best=null,bd=3.0*3.0;
   for(const w of wolves){
@@ -435,7 +473,8 @@ function doAttack(p){
   if(best){
     best.hp-=1; best.hurt=0.25;
     const d=Math.sqrt(bd)||1;
-    best.x+=(best.x-p.x)/d*1.2; best.z+=(best.z-p.z)/d*1.2;
+    best.x+=(best.x-p.x)/d*1.2;
+    best.z+=(best.z-p.z)/d*1.2;
     burst(best.x,0.9,best.z,6,'#c0392b',2.2,0.5);
     if(best.hp<=0){
       wolves.splice(wolves.indexOf(best),1);
@@ -459,33 +498,46 @@ function doAttack(p){
     bt.hp--; bt.shake=0.28;
     burst(bt.x,1.2,bt.z,5,'#6b4b2a',2,0.6);
     if(bt.hp<=0){
-      bt.alive=false; bt.timer=0; p.wood+=2;
+      bt.alive=false; bt.timer=0;
+      p.wood+=2;
       burst(bt.x,1.4,bt.z,16,'#4d7c3a',3,0.9);
     }
   }
 }
 
+/* ---------------- simulation (host / solo) ---------------- */
 function lightLevel(p){
   if(p<DAY_FRAC) return 1;
   if(p<DAY_FRAC+0.10) return 1-(p-DAY_FRAC)/0.10;
   if(p<0.90) return 0;
   return (p-0.90)/0.10;
 }
+
 function keyStateForRemote(kObj, code){ return !!kObj[code]; }
 
 function simulate(dt){
-  now+=dt; cycleT+=dt;
+  now+=dt;
+  cycleT+=dt;
   if(cycleT>=CYCLE) cycleT-=CYCLE;
   light=lightLevel(cycleT/CYCLE);
+
   const nightNow=light<0.35;
-  if(nightNow && !isNight){ isNight=true; night++; spawnWolves(); msg('NIGHT '+night+'  —  STAY BY THE FIRE',3); }
-  if(!nightNow && isNight){ isNight=false; msg('DAY '+(night+1)+'  —  GATHER WOOD',3); }
+  if(nightNow && !isNight){
+    isNight=true; night++;
+    spawnWolves();
+    msg('NIGHT '+night+'  —  STAY BY THE FIRE',3);
+  }
+  if(!nightNow && isNight){
+    isNight=false;
+    msg('DAY '+(night+1)+'  —  GATHER WOOD',3);
+  }
   if(msgTimer>0) msgTimer-=dt;
 
   const drain=isNight?1.15:0.22;
   fire.fuel=Math.max(0,fire.fuel-drain*dt);
   const fireLit=fire.fuel>0;
 
+  // process each player
   for(let pi=0; pi<players.length; pi++){
     const p=players[pi];
     if(p.hurt>0) p.hurt-=dt;
@@ -493,8 +545,14 @@ function simulate(dt){
     if(p.swing>0) p.swing-=dt;
     if(p.ghostT>0){
       p.ghostT-=dt;
-      if(p.ghostT<=0){ players.splice(pi,1); pi--; broadcastPlayerList(); continue; }
+      if(p.ghostT<=0){
+        // remove ghost
+        players.splice(pi,1); pi--;
+        broadcastPlayerList();
+        continue;
+      }
     }
+
     if(p.dead){
       p.respawn-=dt;
       if(p.respawn<=0 && !gameOver){
@@ -504,8 +562,13 @@ function simulate(dt){
       }
       continue;
     }
-    let dx=0,dz=0, wantsAttack=false;
+
+    // determine input source
+    let dx=0,dz=0;
+    let wantsAttack=false;
+
     if(p.id===0){
+      // host's player: WASD (and arrows too)
       if(keys['KeyW'] || keys['ArrowUp'])    dz-=1;
       if(keys['KeyS'] || keys['ArrowDown'])  dz+=1;
       if(keys['KeyA'] || keys['ArrowLeft'])  dx-=1;
@@ -513,12 +576,14 @@ function simulate(dt){
       dx += touch.joyX; dz += touch.joyZ;
       wantsAttack = pressed['Space'] || pressed['Enter'] || touch.actionJustPressed;
     } else if(net.mode==='solo' && p.id===1){
+      // local co-op P2: arrows + Enter
       if(keys['ArrowUp'])    dz-=1;
       if(keys['ArrowDown'])  dz+=1;
       if(keys['ArrowLeft'])  dx-=1;
       if(keys['ArrowRight']) dx+=1;
       wantsAttack = pressed['Enter'] || pressed['Slash'] || pressed['ShiftRight'];
     } else if(net.mode==='host'){
+      // remote guest
       const g = findGuestByPlayerId(p.id);
       if(g && g.lastKeys){
         if(keyStateForRemote(g.lastKeys,'KeyW')||keyStateForRemote(g.lastKeys,'ArrowUp'))    dz-=1;
@@ -530,18 +595,23 @@ function simulate(dt){
         if(g.lastKeys.__act) wantsAttack=true;
       }
     }
+
     const l=Math.hypot(dx,dz);
     if(l>0.05){
       if(l>1){ dx/=l; dz/=l; }
       p.face=Math.atan2(dx,dz);
       p.walk+=dt*11;
-      const sm = l<1 ? Math.min(1,l) : 1;
-      p.x+=dx*7.2*dt*sm; p.z+=dz*7.2*dt*sm;
-    } else { p.walk*=Math.pow(0.001,dt); }
+      const speedMul = l<1 ? Math.min(1,l) : 1;
+      p.x+=dx*7.2*dt*speedMul;
+      p.z+=dz*7.2*dt*speedMul;
+    } else {
+      p.walk*=Math.pow(0.001,dt);
+    }
 
+    // tree collision
     for(const t of trees){
       if(!t.alive) continue;
-      const ddx=p.x-t.x, ddz=p.z-t.z;
+      const ddx=p.x-t.x,ddz=p.z-t.z;
       const d2=ddx*ddx+ddz*ddz;
       const rad=1.0+t.w*0.12;
       if(d2<rad*rad && d2>0.0001){
@@ -553,8 +623,10 @@ function simulate(dt){
     if(r2>WORLD_R){p.x*=WORLD_R/r2;p.z*=WORLD_R/r2;}
 
     if(wantsAttack && p.atkCd<=0){
-      p.atkCd=0.5; p.swing=0.3; doAttack(p);
+      p.atkCd=0.5; p.swing=0.3;
+      doAttack(p);
     }
+
     const dfire=Math.hypot(p.x-fire.x,p.z-fire.z);
     if(isNight){
       if(fireLit && dfire<10.5) p.hp=Math.min(p.maxhp,p.hp+3.5*dt);
@@ -562,13 +634,17 @@ function simulate(dt){
     } else {
       if(fireLit && dfire<10.5) p.hp=Math.min(p.maxhp,p.hp+4*dt);
     }
+
     if(p.hp<=0){
       p.hp=0; p.dead=true; p.respawn=9;
       burst(p.x,1,p.z,22,'#c0392b',3.5,1);
     }
   }
+
+  // game over only if EVERY player is dead AND we have at least 1 player
   if(players.length>0 && players.every(p=>p.dead)) gameOver=true;
 
+  // wolves
   for(let i=wolves.length-1;i>=0;i--){
     const w=wolves[i];
     if(w.hurt>0) w.hurt-=dt;
@@ -586,32 +662,42 @@ function simulate(dt){
       } else {
         w.cd-=dt;
         if(w.cd<=0){
-          w.cd=1.15; best.hp-=w.dmg; best.hurt=0.35;
+          w.cd=1.15;
+          best.hp-=w.dmg; best.hurt=0.35;
           burst(best.x,1,best.z,7,'#e74c3c',2.5,0.5);
         }
       }
     } else {
       const dx=w.x-cam.x,dz=w.z-cam.z;
       const ll=Math.hypot(dx,dz)||1;
-      w.x+=dx/ll*w.spd*1.5*dt; w.z+=dz/ll*w.spd*1.5*dt;
+      w.x+=dx/ll*w.spd*1.5*dt;
+      w.z+=dz/ll*w.spd*1.5*dt;
       if(Math.hypot(w.x,w.z)>115) wolves.splice(i,1);
     }
   }
+
   for(const t of trees){
     if(t.shake>0) t.shake-=dt;
-    if(!t.alive){ t.timer+=dt; if(t.timer>=RESPAWN_T){t.alive=true;t.hp=3;t.shake=0;} }
+    if(!t.alive){
+      t.timer+=dt;
+      if(t.timer>=RESPAWN_T){t.alive=true;t.hp=3;t.shake=0;}
+    }
   }
+
   for(let i=particles.length-1;i>=0;i--){
     const q=particles[i];
     q.life-=dt;
     if(q.life<=0){particles.splice(i,1);continue;}
     q.vy-=12*dt;
-    q.x+=q.vx*dt; q.y+=q.vy*dt; q.z+=q.vz*dt;
+    q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt;
     if(q.y<0){q.y=0;q.vy*=-0.35;q.vx*=0.6;q.vz*=0.6;}
   }
 }
+
 function findGuestByPlayerId(pid){
-  for(const g of net.guests.values()) if(g.playerId===pid) return g;
+  for(const g of net.guests.values()){
+    if(g.playerId===pid) return g;
+  }
   return null;
 }
 
@@ -620,10 +706,13 @@ function line3(x1,y1,z1,x2,y2,z2){
   let a=proj(x1,y1,z1),b=proj(x2,y2,z2);
   const NP=nearPlane;
   if(a.vz<NP && b.vz<NP) return;
-  if(a.vz<NP){ const t=(NP-a.vz)/(b.vz-a.vz);
-    a={vx:a.vx+(b.vx-a.vx)*t,vy:a.vy+(b.vy-a.vy)*t,vz:NP}; }
-  else if(b.vz<NP){ const t=(NP-b.vz)/(a.vz-b.vz);
-    b={vx:b.vx+(a.vx-b.vx)*t,vy:b.vy+(a.vy-b.vy)*t,vz:NP}; }
+  if(a.vz<NP){
+    const t=(NP-a.vz)/(b.vz-a.vz);
+    a={vx:a.vx+(b.vx-a.vx)*t,vy:a.vy+(b.vy-a.vy)*t,vz:NP};
+  } else if(b.vz<NP){
+    const t=(NP-b.vz)/(a.vz-b.vz);
+    b={vx:b.vx+(a.vx-b.vx)*t,vy:b.vy+(a.vy-b.vy)*t,vz:NP};
+  }
   const sa=scr(a),sb=scr(b);
   ctx.moveTo(sa.x,sa.y); ctx.lineTo(sb.x,sb.y);
 }
@@ -633,8 +722,10 @@ function drawGround(){
   const skyBotN=[24,32,54],skyBotD=[206,232,244];
   const gndFarN=[11,18,20],gndFarD=[104,140,84];
   const gndNearN=[7,12,12],gndNearD=[62,96,52];
-  const skyTop=mix(skyTopN,skyTopD,L), skyBot=mix(skyBotN,skyBotD,L);
-  const gndFar=mix(gndFarN,gndFarD,L), gndNear=mix(gndNearN,gndNearD,L);
+  const skyTop=mix(skyTopN,skyTopD,L);
+  const skyBot=mix(skyBotN,skyBotD,L);
+  const gndFar=mix(gndFarN,gndFarD,L);
+  const gndNear=mix(gndNearN,gndNearD,L);
   const hy=clamp(horizonY,-4000,H+4000);
   if(L<0.75){
     const a=(0.75-L)/0.75;
@@ -658,10 +749,12 @@ function drawGround(){
   gg.addColorStop(0,gndFar); gg.addColorStop(1,gndNear);
   ctx.fillStyle=gg; ctx.fillRect(0,g0,W,H-g0);
   const step=4;
-  const cx=Math.round(cam.x/step)*step, cz=Math.round(cam.z/step)*step;
+  const cx=Math.round(cam.x/step)*step;
+  const cz=Math.round(cam.z/step)*step;
   const R= IS_MOBILE?30:46;
   ctx.strokeStyle='rgba(0,0,0,'+(0.10+0.10*(1-L)).toFixed(3)+')';
-  ctx.lineWidth=1; ctx.beginPath();
+  ctx.lineWidth=1;
+  ctx.beginPath();
   for(let i=-R;i<=R;i+=step){
     line3(cx+i,0,cz-R,cx+i,0,cz+R);
     line3(cx-R,0,cz+i,cx+R,0,cz+i);
@@ -697,23 +790,31 @@ function drawTree(t,v){
     ctx.beginPath();ctx.ellipse(cx,base.y-h*0.18,w*0.10,w*0.035,0,0,6.3);ctx.fill();
     ctx.globalAlpha=1; return;
   }
-  const trunkW=w*0.15, trunkH=h*0.30;
+  const trunkW=w*0.15;
+  const trunkH=h*0.30;
   ctx.fillStyle='#4b3728';
   ctx.fillRect(cx-trunkW/2,base.y-trunkH,trunkW,trunkH);
-  const hue=128+t.seed*26, lum=16+t.seed*9;
+  const hue=128+t.seed*26;
+  const lum=16+t.seed*9;
   ctx.fillStyle='hsl('+hue+',32%,'+lum+'%)';
   for(let i=0;i<3;i++){
     const ty=top.y+h*(0.02+i*0.255);
     const by=ty+h*0.42;
     const ww=w*(0.56+i*0.26);
     ctx.beginPath();
-    ctx.moveTo(cx,ty); ctx.lineTo(cx-ww*0.5,by); ctx.lineTo(cx+ww*0.5,by);
-    ctx.closePath(); ctx.fill();
+    ctx.moveTo(cx,ty);
+    ctx.lineTo(cx-ww*0.5,by);
+    ctx.lineTo(cx+ww*0.5,by);
+    ctx.closePath();
+    ctx.fill();
   }
   ctx.fillStyle='rgba(255,255,255,0.05)';
   ctx.beginPath();
-  ctx.moveTo(cx,top.y+h*0.02); ctx.lineTo(cx-w*0.28,top.y+h*0.55);
-  ctx.lineTo(cx,top.y+h*0.50); ctx.closePath(); ctx.fill();
+  ctx.moveTo(cx,top.y+h*0.02);
+  ctx.lineTo(cx-w*0.28,top.y+h*0.55);
+  ctx.lineTo(cx,top.y+h*0.50);
+  ctx.closePath();
+  ctx.fill();
   ctx.globalAlpha=1;
 }
 function drawRock(r,v){
@@ -731,13 +832,15 @@ function drawRock(r,v){
   ctx.lineTo(base.x+w*0.10,base.y-h);
   ctx.lineTo(base.x+w*0.46,base.y-h*0.55);
   ctx.lineTo(base.x+w*0.5,base.y);
-  ctx.closePath(); ctx.fill();
+  ctx.closePath();
+  ctx.fill();
   ctx.fillStyle='rgba(255,255,255,0.10)';
   ctx.beginPath();
   ctx.moveTo(base.x-w*0.34,base.y-h*0.85);
   ctx.lineTo(base.x+w*0.10,base.y-h);
   ctx.lineTo(base.x+w*0.02,base.y-h*0.55);
-  ctx.closePath(); ctx.fill();
+  ctx.closePath();
+  ctx.fill();
   ctx.globalAlpha=1;
 }
 function drawPlayer(p,v){
@@ -747,21 +850,31 @@ function drawPlayer(p,v){
   const top=scr(vt);
   const h=base.y-top.y;
   if(h<3) return;
-  const w=h*0.46, feet=base.y, headR=h*0.135;
+  const w=h*0.46;
+  const feet=base.y;
+  const headR=h*0.135;
   const bob=Math.sin(p.walk)*h*0.022;
   const headY=top.y+headR+bob;
   const bodyTop=headY+headR*0.85;
   const bodyBot=feet-h*0.40;
   const cx=base.x;
+
   ctx.save();
+
+  // ghost = transparent
   if(p.ghostT>0) ctx.globalAlpha = clamp(p.ghostT/3, 0.2, 1);
+
+  // local player ring
   if(p.local){
     ctx.strokeStyle='rgba(255,255,255,0.5)';
     ctx.lineWidth=1.8;
     ctx.beginPath();
-    ctx.ellipse(cx,feet,w*0.78,w*0.30,0,0,6.3); ctx.stroke();
+    ctx.ellipse(cx,feet,w*0.78,w*0.30,0,0,6.3);
+    ctx.stroke();
   }
-  ctx.font='bold '+Math.max(9,h*0.14)+'px ui-monospace, monospace';
+
+  // name tag
+  ctx.font = 'bold '+Math.max(9,h*0.14)+'px ui-monospace, monospace';
   ctx.textAlign='center'; ctx.textBaseline='bottom';
   ctx.fillStyle='rgba(0,0,0,0.65)';
   ctx.fillText(p.name, cx+1, top.y-6);
@@ -770,30 +883,40 @@ function drawPlayer(p,v){
 
   ctx.fillStyle='rgba(0,0,0,0.30)';
   ctx.beginPath();ctx.ellipse(cx,feet,w*0.62,w*0.22,0,0,6.3);ctx.fill();
+
   const legSwing=Math.sin(p.walk)*w*0.16;
   ctx.fillStyle=p.dark;
   rr(cx-w*0.30+legSwing,bodyBot+bob,w*0.22,feet-bodyBot-bob,w*0.08);ctx.fill();
   rr(cx+w*0.08-legSwing,bodyBot+bob,w*0.22,feet-bodyBot-bob,w*0.08);ctx.fill();
+
   ctx.fillStyle=p.hurt>0?'#ff5555':p.color;
   rr(cx-w*0.35,bodyTop,w*0.70,bodyBot-bodyTop,w*0.22);ctx.fill();
+
   const prog=p.swing>0?(1-p.swing/0.3):0;
   const ang=-1.05+(p.swing>0?prog*2.5:0);
-  const shx=cx+w*0.30, shy=bodyTop+h*0.09;
+  const shx=cx+w*0.30,shy=bodyTop+h*0.09;
   const armLen=h*0.30;
-  const hx=shx+Math.cos(ang)*armLen, hy=shy+Math.sin(ang)*armLen;
+  const hx=shx+Math.cos(ang)*armLen;
+  const hy=shy+Math.sin(ang)*armLen;
+
   ctx.strokeStyle=p.dark;
-  ctx.lineWidth=Math.max(1.5,w*0.19); ctx.lineCap='round';
+  ctx.lineWidth=Math.max(1.5,w*0.19);
+  ctx.lineCap='round';
   ctx.beginPath();ctx.moveTo(shx,shy);ctx.lineTo(hx,hy);ctx.stroke();
+
   ctx.strokeStyle='#8a6a3f';
   ctx.lineWidth=Math.max(1.4,w*0.11);
-  const ax2=hx+Math.cos(ang)*h*0.24, ay2=hy+Math.sin(ang)*h*0.24;
+  const ax2=hx+Math.cos(ang)*h*0.24;
+  const ay2=hy+Math.sin(ang)*h*0.24;
   ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(ax2,ay2);ctx.stroke();
   ctx.fillStyle='#cfd6dd';
   ctx.beginPath();ctx.arc(ax2,ay2,Math.max(1.6,h*0.065),0,6.3);ctx.fill();
+
   ctx.fillStyle='#f0c9a0';
   ctx.beginPath();ctx.arc(cx,headY,headR,0,6.3);ctx.fill();
   ctx.fillStyle=p.dark;
   ctx.beginPath();ctx.arc(cx,headY-headR*0.12,headR*1.03,Math.PI*1.02,Math.PI*2.02);ctx.fill();
+
   if(p.wood>0){
     ctx.fillStyle='#8a6a3f';
     const n=Math.min(p.wood,4);
@@ -876,7 +999,8 @@ function drawFire(v){
       const ox=Math.sin(t)*w*0.17;
       const sc=0.55+0.45*Math.abs(Math.sin(t*1.35+i));
       const col=i%3===0?'rgba(255,225,120,0.95)'
-              :i%3===1?'rgba(255,150,40,0.88)':'rgba(255,80,20,0.80)';
+              :i%3===1?'rgba(255,150,40,0.88)'
+                      :'rgba(255,80,20,0.80)';
       ctx.fillStyle=col;
       ctx.beginPath();
       ctx.moveTo(ox-w*0.20*sc,0);
@@ -976,33 +1100,43 @@ function render(){
 /* ---------------- HUD ---------------- */
 function drawHUD(){
   if(phase!==PHASE.PLAYING && phase!==PHASE.PAUSED) return;
+
+  // Player list top-left
   const rowH = IS_MOBILE ? 22 : 26;
   const rowW = IS_MOBILE ? 160 : 190;
   const startY = 10;
+  const pad = 8;
   ctx.textBaseline='middle';
   for(let i=0;i<players.length;i++){
     const p=players[i];
-    const y=startY+i*rowH;
+    const y = startY + i*rowH;
     ctx.fillStyle='rgba(0,0,0,0.42)';
-    rr(10,y,rowW,rowH-3,5); ctx.fill();
+    rr(10, y, rowW, rowH-3, 5); ctx.fill();
+    // color chip
     ctx.fillStyle=p.color;
-    rr(14,y+4,12,rowH-11,3); ctx.fill();
+    rr(14, y+4, 12, rowH-11, 3); ctx.fill();
+    // name
     ctx.textAlign='left';
     ctx.font='bold 11px ui-monospace, monospace';
-    ctx.fillStyle=p.local?'#fff':'#ddd';
-    ctx.fillText(p.name + (p.local?' (you)':''),32,y+(rowH-3)/2);
-    const hpW=52, hpX=rowW-20;
+    ctx.fillStyle = p.local?'#fff':'#ddd';
+    ctx.fillText(p.name + (p.local?' (you)':''), 32, y + (rowH-3)/2);
+    // hp bar
+    const hpW = 52;
+    const hpX = rowW - 20;
     ctx.fillStyle='rgba(255,255,255,0.16)';
-    rr(10+hpX,y+5,hpW,7,3); ctx.fill();
+    rr(10 + hpX, y+5, hpW, 7, 3); ctx.fill();
     const hpFrac=clamp(p.hp/p.maxhp,0,1);
     ctx.fillStyle=hpFrac>0.5?'#4ade80':hpFrac>0.25?'#fbbf24':'#ef4444';
-    rr(10+hpX,y+5,Math.max(2,hpW*hpFrac),7,3); ctx.fill();
+    rr(10 + hpX, y+5, Math.max(2,hpW*hpFrac), 7, 3); ctx.fill();
+    // wood
     ctx.textAlign='right';
     ctx.font='10px ui-monospace, monospace';
     ctx.fillStyle='#ffd76e';
-    ctx.fillText('🪵'+p.wood,10+rowW-8,y+(rowH-3)/2);
+    ctx.fillText('🪵'+p.wood, 10 + rowW - 8, y + (rowH-3)/2);
   }
-  const s=(W<500)?0.72:1;
+
+  // Center night counter + fire bar
+  const s = (W<500)?0.72:1;
   ctx.textAlign='center'; ctx.textBaseline='top';
   ctx.font='bold '+(24*s).toFixed(0)+'px ui-monospace, monospace';
   ctx.fillStyle='rgba(0,0,0,0.5)';
@@ -1012,6 +1146,7 @@ function drawHUD(){
   ctx.font='bold '+(12*s).toFixed(0)+'px ui-monospace, monospace';
   ctx.fillStyle=isNight?'#8fb6ff':'#ffd76e';
   ctx.fillText(isNight?'NIGHT — STAY WARM':'DAY — CHOP WOOD',W/2,40);
+
   const fw=220*s,fx0=W/2-fw/2,fy0=56;
   ctx.fillStyle='rgba(0,0,0,0.5)';
   rr(fx0,fy0,fw,12*s,6); ctx.fill();
@@ -1021,6 +1156,7 @@ function drawHUD(){
   ctx.font='bold 10px ui-monospace, monospace';
   ctx.fillStyle='rgba(255,255,255,0.85)';
   ctx.fillText('FIRE '+Math.ceil(fire.fuel),W/2,fy0+14*s);
+
   if(msgTimer>0){
     const a=clamp(msgTimer,0,1);
     ctx.globalAlpha=a;
@@ -1031,12 +1167,14 @@ function drawHUD(){
     ctx.fillText(msgText,W/2,H*0.30);
     ctx.globalAlpha=1;
   }
+
   if(!IS_TOUCH){
     ctx.font='11px ui-monospace, monospace';
     ctx.fillStyle='rgba(255,255,255,0.42)';
     ctx.textAlign='center';
     ctx.fillText('MOVE: WASD/ARROWS   ACT: SPACE   CHAT: T   PAUSE: ESC', W/2, H-22);
   }
+
   if(gameOver){
     ctx.fillStyle='rgba(0,0,0,0.78)';
     ctx.fillRect(0,0,W,H);
@@ -1056,9 +1194,9 @@ function drawHUD(){
 }
 
 /* =========================================================
-   NETWORKING — same-WiFi-only
+   NETWORKING
    ========================================================= */
-const LOBBY_ID = '99nights-forest-LAN-v3-8fj3k9-private';
+const LOBBY_ID = '99nights-forest-coop-v2-9x7k2q-global';
 let phase = PHASE.MENU;
 let localName = '';
 
@@ -1070,14 +1208,14 @@ function addChatMessage(name, text, type){
   renderChatLog();
 }
 function renderChatLog(){
-  const el=document.getElementById('chatLog');
+  const el = document.getElementById('chatLog');
   if(!el) return;
   const wasNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-  let html='';
+  let html = '';
   for(const m of chatMessages){
     const cls = m.type==='sys' ? 'msg sys' : (m.type==='mine' ? 'msg mine' : 'msg');
-    const safeText=String(m.text).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
-    const safeName=String(m.name).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
+    const safeText = String(m.text).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
+    const safeName = String(m.name).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]);
     if(m.type==='sys'){
       html += '<div class="'+cls+'"><span class="name">*</span> <span>'+safeText+'</span></div>';
     } else {
@@ -1087,7 +1225,9 @@ function renderChatLog(){
   el.innerHTML = html;
   if(wasNearBottom) el.scrollTop = el.scrollHeight;
 }
-function openChat(open){ document.getElementById('chatWrap').classList.toggle('on', open); }
+function openChat(open){
+  document.getElementById('chatWrap').classList.toggle('on', open);
+}
 function isChatOpen(){ return document.getElementById('chatWrap').classList.contains('on'); }
 
 function sendChat(text){
@@ -1097,7 +1237,9 @@ function sendChat(text){
     addChatMessage(localName||'Host', text, 'mine');
     broadcastChat(localName||'Host', text, null);
   } else if(net.mode==='guest'){
-    if(net.dc && net.dc.open){ try{ net.dc.send({t:'chat', text}); }catch(e){} }
+    if(net.dc && net.dc.open){
+      try{ net.dc.send({t:'chat', text}); }catch(e){}
+    }
     addChatMessage(localName||'You', text, 'mine');
   } else {
     addChatMessage(localName||'You', text, 'mine');
@@ -1110,9 +1252,12 @@ function broadcastChat(name, text, exceptPeerId){
       if(peerId===exceptPeerId) continue;
       try{ if(g.conn && g.conn.open) g.conn.send(msg); }catch(e){}
     }
+  } else if(net.mode==='guest'){
+    if(net.dc && net.dc.open){ try{ net.dc.send({t:'chat', name, text}); }catch(e){} }
   }
 }
 
+/* --- phase setter --- */
 function setPhase(p){
   phase = p;
   document.getElementById('menu').classList.toggle('hidden', p!==PHASE.MENU);
@@ -1125,75 +1270,36 @@ function setPhase(p){
   document.getElementById('topBtns').classList.toggle('on', p===PHASE.PLAYING);
   if(p!==PHASE.PLAYING) openChat(false);
 }
-function setSearchStatus(t, cls){ const el=document.getElementById('searchStatus'); el.textContent=t; el.className='status '+(cls||''); }
-function setError(t, title){
-  document.getElementById('errTitle').textContent = title || 'CONNECTION FAILED';
-  document.getElementById('errorMsg').textContent = t;
-  setPhase(PHASE.ERROR);
-}
-function setNotSameWifiError(){
-  setError(
-    'You do not have the same Wi-Fi as this player. Please play with someone on the same Wi-Fi as you.',
-    '⚠ DIFFERENT WI-FI DETECTED'
-  );
-}
 
-/* *** Verify connection is truly LAN by inspecting WebRTC stats *** */
-async function verifySameWifi(conn){
-  return new Promise((resolve)=>{
-    // give ICE a moment to settle
-    setTimeout(async ()=>{
-      try{
-        const pc = conn.peerConnection || conn._pc || (conn._dc && conn._dc._pc);
-        if(!pc){ resolve(null); return; } // can't check → allow (since no STUN anyway)
-        const stats = await pc.getStats();
-        let selected = null;
-        stats.forEach(r=>{
-          if(r.type==='candidate-pair' && r.state==='succeeded' && (r.nominated || r.selected)){
-            selected = r;
-          }
-        });
-        if(!selected){ resolve(null); return; }
-        let localCand=null, remoteCand=null;
-        stats.forEach(r=>{
-          if(r.type==='local-candidate'  && r.id===selected.localCandidateId)  localCand=r;
-          if(r.type==='remote-candidate' && r.id===selected.remoteCandidateId) remoteCand=r;
-        });
-        // both must be 'host' type (direct LAN addresses — including mDNS .local)
-        const localOK  = localCand  && localCand.candidateType  === 'host';
-        const remoteOK = remoteCand && remoteCand.candidateType === 'host';
-        if(localOK && remoteOK){ resolve(true); return; }
-        // if either is srflx/prflx/relay → definitely not same LAN
-        resolve(false);
-      }catch(e){
-        resolve(null); // can't determine → allow
-      }
-    }, 900);
-  });
-}
+function setSearchStatus(t, cls){ const el=document.getElementById('searchStatus'); el.textContent=t; el.className='status '+(cls||''); }
+function setError(t){ document.getElementById('errorMsg').textContent=t; setPhase(PHASE.ERROR); }
 
 /* --- Online entry --- */
 function playOnline(){
   localName = (document.getElementById('nameInput').value || '').trim() || ('P'+Math.floor(Math.random()*900+100));
   setPhase(PHASE.SEARCH);
-  setSearchStatus('Searching for a host on your Wi-Fi...');
+  setSearchStatus('Connecting to matchmaking broker...');
   try{ startMatchmaking(); }catch(e){ setError(e.message||String(e)); }
 }
 
 function startMatchmaking(){
   cleanupPeer();
-  // *** IMPORTANT: config with empty iceServers → no STUN, no TURN ***
-  const hostPeer = new Peer(LOBBY_ID, { debug: 1, config: LOCAL_ONLY_ICE });
+  const hostPeer = new Peer(LOBBY_ID, { debug: 1 });
   let settled = false;
 
-  hostPeer.on('open', (id)=>{
+  hostPeer.on('open', (id) => {
     if(settled) return;
     settled = true;
-    net.mode='host';
-    net.peer=hostPeer;
-    net.myPeerId=id;
-    players.length=0;
-    players.push(makePlayer(0, localName||'Host', id, true));
+    // we are the host
+    net.mode = 'host';
+    net.peer = hostPeer;
+    net.myPeerId = id;
+    net.hostPeerId = id;
+    // create local player 0
+    players.length = 0;
+    const me = makePlayer(0, localName || 'Host', id, true);
+    players.push(me);
+    // start with a fresh world seed
     genWorld((Math.random()*2**31)|0);
     hostPeer.on('connection', onIncomingGuest);
     hostPeer.on('call', onIncomingCall);
@@ -1203,24 +1309,24 @@ function startMatchmaking(){
     setShareUrl();
   });
 
-  hostPeer.on('error', (err)=>{
+  hostPeer.on('error', (err) => {
     if(settled) return;
-    if(err.type==='unavailable-id'){
-      settled=true;
+    if(err.type === 'unavailable-id'){
+      settled = true;
       try{ hostPeer.destroy(); }catch(e){}
       connectAsGuest();
-    } else if(err.type==='network' || err.type==='server-error' || err.type==='socket-error'){
-      setError('Could not reach matchmaking server. Check your internet connection.');
-    } else if(err.type==='browser-incompatible'){
+    } else if(err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error'){
+      setError('Could not reach matchmaking server. Check your internet.');
+    } else if(err.type === 'browser-incompatible'){
       setError('Your browser does not support WebRTC.');
     } else {
       setError('Connection error: ' + (err.message || err.type));
     }
   });
 
-  setTimeout(()=>{
+  setTimeout(() => {
     if(!settled){
-      settled=true;
+      settled = true;
       try{ hostPeer.destroy(); }catch(e){}
       setError('Timed out connecting. Try again.');
     }
@@ -1228,71 +1334,61 @@ function startMatchmaking(){
 }
 
 function connectAsGuest(){
-  setSearchStatus('Host found on your Wi-Fi — connecting...');
-  const guestPeer = new Peer({ debug: 1, config: LOCAL_ONLY_ICE });
+  setSearchStatus('Host found — connecting...');
+  const guestPeer = new Peer({ debug: 1 });
   net.peer = guestPeer;
   net.mode = 'guest';
+  net.hostPeerId = LOBBY_ID;
 
-  guestPeer.on('open', (id)=>{
+  guestPeer.on('open', (id) => {
     net.myPeerId = id;
     setSearchStatus('Joining game...');
     const conn = guestPeer.connect(LOBBY_ID, { reliable: false });
     net.dc = conn;
 
-    // *** Same-WiFi timeout: if we can't reach the host locally, they're not on our WiFi ***
-    const timeout = setTimeout(()=>{
-      if(!net.connected){
-        setNotSameWifiError();
-      }
-    }, 8000);
+    const timeout = setTimeout(() => {
+      if(!net.connected) setError('Could not reach host. Try again.');
+    }, 10000);
 
-    conn.on('open', async ()=>{
+    conn.on('open', () => {
       clearTimeout(timeout);
-      // verify the connection is truly local
-      const isLocal = await verifySameWifi(conn);
-      if(isLocal === false){
-        try{ conn.close(); }catch(e){}
-        net.connected = false;
-        setNotSameWifiError();
-        return;
-      }
       net.connected = true;
       try{ conn.send({ t:'hello', name: localName }); }catch(e){}
     });
 
-    conn.on('data', (data)=>handleGuestMessage(data));
+    conn.on('data', (data) => handleGuestMessage(data));
 
-    conn.on('close', ()=>{
+    conn.on('close', () => {
       net.connected = false;
+      // host left → keep playing what we have as solo
       if(phase===PHASE.PLAYING || phase===PHASE.PAUSED){
         addChatMessage('*','HOST DISCONNECTED — continuing locally','sys');
         msg('HOST DISCONNECTED',5);
-        net.mode='solo';
+        net.mode = 'solo';
+        // keep the world; local player keeps playing
         for(const p of players) p.local = (p.id===net.myPlayerId);
       }
     });
 
-    conn.on('error', (e)=>{
-      // ICE failure → almost always means "different network"
-      setNotSameWifiError();
-    });
+    conn.on('error', (e) => setError('Connection error: ' + (e.message || e)));
   });
 
-  guestPeer.on('error', (err)=>{
-    if(err.type==='peer-unavailable'){
-      setError('No host found on your Wi-Fi. Make sure someone else has clicked "Play Online" on the same Wi-Fi.');
-    } else if(err.type==='network' || err.type==='server-error'){
+  guestPeer.on('error', (err) => {
+    if(err.type === 'peer-unavailable'){
+      setError('Host left. Try again in a moment.');
+    } else if(err.type === 'network' || err.type === 'server-error'){
       setError('Matchmaking server unreachable.');
     } else {
       setError('Connection error: ' + (err.message || err.type));
     }
   });
 
-  setTimeout(()=>{
-    if(!net.connected && phase===PHASE.SEARCH) setNotSameWifiError();
+  setTimeout(() => {
+    if(!net.connected && phase === PHASE.SEARCH) setError('Timed out. Try again.');
   }, 12000);
 }
 
+/* --- incoming guest (host side) --- */
 function onIncomingGuest(conn){
   if(players.length >= MAX_PLAYERS){
     try{
@@ -1307,25 +1403,21 @@ function onIncomingGuest(conn){
   const entry = { conn, playerId:null, name:'Guest', lastKeys:{} };
   net.guests.set(peerId, entry);
 
-  conn.on('data', async (data)=>{
+  conn.on('data', (data) => {
     if(!data || typeof data!=='object') return;
     if(data.t==='hello'){
       entry.name = (data.name||'').slice(0,14) || ('P'+(players.length+1));
-      // verify the connection is truly local before accepting
-      const isLocal = await verifySameWifi(conn);
-      if(isLocal === false){
-        try{ conn.close(); }catch(e){}
-        net.guests.delete(peerId);
-        return;
-      }
       const pid = nextFreePlayerId();
       entry.playerId = pid;
       const np = makePlayer(pid, entry.name, peerId, false);
       players.push(np);
       try{
         conn.send({
-          t:'welcome', playerId: pid, seed: net.seed,
-          players: serializePlayerList(), hostName: localName
+          t:'welcome',
+          playerId: pid,
+          seed: net.seed,
+          players: serializePlayerList(),
+          hostName: localName
         });
       }catch(e){}
       broadcastPlayerList();
@@ -1344,7 +1436,7 @@ function onIncomingGuest(conn){
     }
   });
 
-  conn.on('close', ()=>{
+  conn.on('close', () => {
     const e = net.guests.get(peerId);
     if(e && e.playerId!=null){
       const idx = players.findIndex(p=>p.id===e.playerId);
@@ -1356,10 +1448,12 @@ function onIncomingGuest(conn){
       }
     }
     net.guests.delete(peerId);
+    // host keeps playing; broadcast the update
     broadcastPlayerList();
     updateHostCount();
     cleanupVoicePeer(peerId);
   });
+
   conn.on('error', ()=>{});
 }
 
@@ -1369,7 +1463,7 @@ function nextFreePlayerId(){
   return players.length;
 }
 function updateHostCount(){
-  const el=document.getElementById('hostCount');
+  const el = document.getElementById('hostCount');
   if(el) el.textContent = net.guests.size + ' player' + (net.guests.size===1?'':'s') + ' connected (you are #1)';
 }
 function serializePlayerList(){
@@ -1383,41 +1477,56 @@ function broadcastPlayerList(){
   }
 }
 
+/* --- guest side handlers --- */
 function handleGuestMessage(data){
   if(!data || typeof data!=='object') return;
-  if(data.t==='full'){ setError('Game is full. Try again later.'); return; }
+  if(data.t==='full'){
+    setError('Game is full. Try again later.');
+    return;
+  }
   if(data.t==='welcome'){
     net.myPlayerId = data.playerId;
+    net.hostPeerId = LOBBY_ID;
     genWorld(data.seed);
     players.length = 0;
+    // build from list
     for(const p of data.players){
       const np = makePlayer(p.id, p.name, p.peerId, p.id===net.myPlayerId);
       players.push(np);
     }
+    // ensure our own player exists (should already)
     if(!players.find(p=>p.id===net.myPlayerId)){
-      players.push(makePlayer(net.myPlayerId, localName||'You', net.myPeerId, true));
+      const me = makePlayer(net.myPlayerId, localName||'You', net.myPeerId, true);
+      players.push(me);
     }
     setPhase(PHASE.PLAYING);
     msg('SURVIVE 99 NIGHTS',3);
-    addChatMessage('*','Connected to host on your Wi-Fi','sys');
+    addChatMessage('*','Connected to host','sys');
     renderChatLog();
   }
-  else if(data.t==='st'){ applyState(data); }
-  else if(data.t==='players'){ applyPlayerList(data.list); }
+  else if(data.t==='st'){
+    applyState(data);
+  }
+  else if(data.t==='players'){
+    applyPlayerList(data.list);
+  }
   else if(data.t==='chat'){
     const nm = data.name || '?';
-    const type = (nm === localName) ? 'mine' : (nm==='*' ? 'sys' : 'user');
+    const mineName = localName;
+    const type = (nm === mineName) ? 'mine' : (nm==='*' ? 'sys' : 'user');
     addChatMessage(nm, data.text, type);
   }
 }
 
 function applyPlayerList(list){
   const incoming = new Map(list.map(x=>[x.id, x]));
+  // remove players we have that aren't in list (except our own)
   for(let i=players.length-1;i>=0;i--){
     const p = players[i];
     if(p.id===net.myPlayerId) continue;
     if(!incoming.has(p.id)) players.splice(i,1);
   }
+  // add/update
   for(const [id, info] of incoming){
     let p = players.find(q=>q.id===id);
     if(!p){
@@ -1429,11 +1538,13 @@ function applyPlayerList(list){
       p.local = (id===net.myPlayerId);
     }
   }
+  // sort by id for stable HUD
   players.sort((a,b)=>a.id-b.id);
 }
 
+/* --- state serialization --- */
 function packTrees(){
-  let s='';
+  let s = '';
   for(const t of trees) s += (t.alive ? (t.hp|0) : 0).toString();
   return s;
 }
@@ -1463,6 +1574,7 @@ function applyState(s){
       p = makePlayer(sp.id, 'P'+(sp.id+1), null, sp.id===net.myPlayerId);
       players.push(p);
     }
+    // smooth for remote; snap for local (or just lerp both, simpler)
     p.x = lerp(p.x, sp.x, 0.45);
     p.z = lerp(p.z, sp.z, 0.45);
     p.hp=sp.hp; p.wood=sp.wood; p.face=sp.face; p.walk=sp.walk;
@@ -1470,12 +1582,13 @@ function applyState(s){
     p.hurt=sp.hurt; p.swing=sp.swing; p.atkCd=sp.atkCd;
   }
   players.sort((a,b)=>a.id-b.id);
+
   const incoming = new Set();
   for(const sw of s.w){
     incoming.add(sw.id);
     let w = wolves.find(q=>q.id===sw.id);
     if(!w){
-      w = { id:sw.id, x:sw.x, z:sw.z, hp:sw.hp, maxhp:sw.hp, vx:sw.vx, hurt:sw.hurt, seed:0, spd:5, dmg:8, cd:1 };
+      w={ id:sw.id, x:sw.x, z:sw.z, hp:sw.hp, maxhp:sw.hp, vx:sw.vx, hurt:sw.hurt, seed:0, spd:5, dmg:8, cd:1 };
       wolves.push(w);
     } else {
       w.x=sw.x; w.z=sw.z; w.hp=sw.hp; w.vx=sw.vx; w.hurt=sw.hurt;
@@ -1483,7 +1596,7 @@ function applyState(s){
   }
   for(let i=wolves.length-1;i>=0;i--){
     if(!incoming.has(wolves[i].id)){
-      burst(wolves[i].x,0.8,wolves[i].z,10,'#7f2b2b',3,0.8);
+      burst(wolves[i].x, 0.8, wolves[i].z, 10, '#7f2b2b', 3, 0.8);
       wolves.splice(i,1);
     }
   }
@@ -1500,16 +1613,17 @@ function applyState(s){
 }
 
 /* =========================================================
-   VOICE CHAT (same-LAN only)
+   VOICE CHAT (WebRTC mesh via PeerJS)
    ========================================================= */
 async function toggleVoice(){
-  if(net.voiceEnabled){ disableVoice(); return; }
+  if(net.voiceEnabled) { disableVoice(); return; }
   try{
     const stream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
     net.voiceStream = stream;
     net.voiceEnabled = true;
     document.getElementById('btnVoice').classList.add('on');
-    addChatMessage('*','Voice chat enabled (Wi-Fi only)','sys');
+    addChatMessage('*','Voice chat enabled','sys');
+    // Start calling remote peers in the current lobby
     for(const p of players){
       if(p.peerId && p.peerId !== net.myPeerId) maybeCallVoice(p.peerId);
     }
@@ -1523,9 +1637,9 @@ function disableVoice(){
   document.getElementById('btnVoice').classList.add('muted');
   if(net.voiceStream){
     for(const tr of net.voiceStream.getTracks()) tr.stop();
-    net.voiceStream=null;
+    net.voiceStream = null;
   }
-  for(const [pid, call] of net.voicePeers){
+  for(const [peerId, call] of net.voicePeers){
     try{ if(call && call.close) call.close(); }catch(e){}
   }
   net.voicePeers.clear();
@@ -1537,33 +1651,39 @@ function disableVoice(){
 }
 function cleanupVoicePeer(peerId){
   if(net.voicePeers.has(peerId)){
-    try{ const c=net.voicePeers.get(peerId); if(c && c.close) c.close(); }catch(e){}
+    try{ const c = net.voicePeers.get(peerId); if(c && c.close) c.close(); }catch(e){}
     net.voicePeers.delete(peerId);
   }
-  const el=net.voiceAudioEls.get(peerId);
+  const el = net.voiceAudioEls.get(peerId);
   if(el){ try{ el.pause(); el.srcObject=null; el.remove(); }catch(e){} net.voiceAudioEls.delete(peerId); }
 }
 function maybeCallVoice(peerId){
   if(!net.voiceEnabled || !net.voiceStream) return;
-  if(!peerId || peerId===net.myPeerId) return;
+  if(!peerId || peerId === net.myPeerId) return;
   if(net.voicePeers.has(peerId)) return;
-  if(net.myPeerId && net.myPeerId > peerId) return; // other side calls us
+  // deterministic caller: smaller string calls
+  if(net.myPeerId && net.myPeerId > peerId) return; // other side will call us
   try{
-    const call = net.peer.call(peerId, net.voiceStream, { config: LOCAL_ONLY_ICE });
+    const call = net.peer.call(peerId, net.voiceStream);
     net.voicePeers.set(peerId, call);
-    call.on('stream', (remoteStream)=>attachRemoteAudio(peerId, remoteStream));
+    call.on('stream', (remoteStream)=>{ attachRemoteAudio(peerId, remoteStream); });
     call.on('close', ()=>cleanupVoicePeer(peerId));
     call.on('error', ()=>cleanupVoicePeer(peerId));
   }catch(e){}
 }
 function onIncomingCall(call){
+  // host receives calls from guests
   const peerId = call.peer;
-  call.on('stream', (remoteStream)=>attachRemoteAudio(peerId, remoteStream));
+  call.on('stream', (remoteStream)=>{ attachRemoteAudio(peerId, remoteStream); });
   call.on('close', ()=>cleanupVoicePeer(peerId));
   call.on('error', ()=>cleanupVoicePeer(peerId));
+  // if we have voice enabled and no stream, still answer with empty (muted)
   try{
-    if(net.voiceStream) call.answer(net.voiceStream);
-    else call.answer();
+    if(net.voiceStream){
+      call.answer(net.voiceStream);
+    } else {
+      call.answer();
+    }
     net.voicePeers.set(peerId, call);
   }catch(e){}
 }
@@ -1571,11 +1691,13 @@ function attachRemoteAudio(peerId, stream){
   let el = net.voiceAudioEls.get(peerId);
   if(!el){
     el = document.createElement('audio');
-    el.autoplay=true; el.playsInline=true; el.style.display='none';
+    el.autoplay = true;
+    el.playsInline = true;
+    el.style.display='none';
     document.body.appendChild(el);
     net.voiceAudioEls.set(peerId, el);
   }
-  try{ el.srcObject=stream; el.play().catch(()=>{}); }catch(e){}
+  try{ el.srcObject = stream; el.play().catch(()=>{}); }catch(e){}
 }
 
 /* =========================================================
@@ -1583,15 +1705,17 @@ function attachRemoteAudio(peerId, stream){
    ========================================================= */
 function cleanupPeer(){
   disableVoice();
-  if(net.dc){ try{ net.dc.close(); }catch(e){} net.dc=null; }
+  if(net.dc){ try{ net.dc.close(); }catch(e){} net.dc = null; }
   for(const g of net.guests.values()){
     try{ if(g.conn) g.conn.close(); }catch(e){}
   }
   net.guests.clear();
-  if(net.peer){ try{ net.peer.destroy(); }catch(e){} net.peer=null; }
-  net.connected=false;
-  net.myPeerId=null;
+  if(net.peer){ try{ net.peer.destroy(); }catch(e){} net.peer = null; }
+  net.connected = false;
+  net.myPeerId = null;
+  net.hostPeerId = null;
 }
+
 function setShareUrl(){
   const url = location.href.split('#')[0];
   document.getElementById('shareUrl').textContent = url;
@@ -1606,11 +1730,16 @@ function setShareUrl(){
   const btnAction = document.getElementById('btnAction');
   let joyId = null;
   let baseRect = null;
-  function getBaseCenter(){ baseRect = base.getBoundingClientRect(); return {x:baseRect.left+baseRect.width/2, y:baseRect.top+baseRect.height/2}; }
+
+  function getBaseCenter(){
+    baseRect = base.getBoundingClientRect();
+    return { x: baseRect.left + baseRect.width/2, y: baseRect.top + baseRect.height/2 };
+  }
   const maxR = ()=> base.getBoundingClientRect().width * 0.42;
+
   function updateJoy(clientX, clientY){
     if(!baseRect) getBaseCenter();
-    const c = { x: baseRect.left+baseRect.width/2, y: baseRect.top+baseRect.height/2 };
+    const c = { x: baseRect.left + baseRect.width/2, y: baseRect.top + baseRect.height/2 };
     let dx = clientX - c.x, dy = clientY - c.y;
     const R = maxR();
     const len = Math.hypot(dx,dy);
@@ -1619,12 +1748,16 @@ function setShareUrl(){
     touch.joyX = dx / R;
     touch.joyZ = dy / R;
   }
-  function resetJoy(){ knob.style.transform='translate(0,0)'; touch.joyX=0; touch.joyZ=0; joyId=null; }
+  function resetJoy(){
+    knob.style.transform = 'translate(0,0)';
+    touch.joyX = 0; touch.joyZ = 0; joyId = null;
+  }
   base.addEventListener('touchstart', e=>{ e.preventDefault(); if(joyId!==null)return; const t=e.changedTouches[0]; joyId=t.identifier; getBaseCenter(); updateJoy(t.clientX,t.clientY); }, {passive:false});
   base.addEventListener('touchmove', e=>{ e.preventDefault(); for(const t of e.changedTouches){ if(t.identifier===joyId){ updateJoy(t.clientX,t.clientY); break; } } }, {passive:false});
   const endJoy = e=>{ for(const t of e.changedTouches){ if(t.identifier===joyId){ resetJoy(); break; } } };
   base.addEventListener('touchend', endJoy, {passive:false});
   base.addEventListener('touchcancel', endJoy, {passive:false});
+
   btnAction.addEventListener('touchstart', e=>{ e.preventDefault(); touch.actionDown=true; touch.actionJustPressed=true; }, {passive:false});
   btnAction.addEventListener('touchend', e=>{ e.preventDefault(); touch.actionDown=false; }, {passive:false});
   btnAction.addEventListener('touchcancel', ()=>{ touch.actionDown=false; }, {passive:false});
@@ -1648,12 +1781,23 @@ document.getElementById('btnSolo').addEventListener('click', ()=>{
   openChat(true);
   setPhase(PHASE.PLAYING);
 });
+
 document.getElementById('btnOnline').addEventListener('click', ()=>{ playOnline(); });
-document.getElementById('btnSearchCancel').addEventListener('click', ()=>{ cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU); });
-document.getElementById('btnWaitCancel').addEventListener('click', ()=>{ cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU); });
-document.getElementById('btnErrBack').addEventListener('click', ()=>{ cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU); });
+
+document.getElementById('btnSearchCancel').addEventListener('click', ()=>{
+  cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU);
+});
+document.getElementById('btnWaitCancel').addEventListener('click', ()=>{
+  cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU);
+});
+document.getElementById('btnErrBack').addEventListener('click', ()=>{
+  cleanupPeer(); net.mode='solo'; setPhase(PHASE.MENU);
+});
 document.getElementById('btnStartSolo').addEventListener('click', ()=>{
-  setPhase(PHASE.PLAYING); openChat(true); msg('SURVIVE 99 NIGHTS',3);
+  // host starts playing even without guests
+  setPhase(PHASE.PLAYING);
+  openChat(true);
+  msg('SURVIVE 99 NIGHTS',3);
 });
 document.getElementById('btnCopyUrl').addEventListener('click', ()=>{
   const url = document.getElementById('shareUrl').textContent;
@@ -1664,10 +1808,11 @@ document.getElementById('btnCopyUrl').addEventListener('click', ()=>{
 });
 document.getElementById('btnResume').addEventListener('click', ()=>{ setPhase(PHASE.PLAYING); });
 document.getElementById('btnQuit').addEventListener('click', ()=>{
-  cleanupPeer(); net.mode='solo';
-  players.length=0; players.push(makePlayer(0,'P1',null,true));
+  cleanupPeer(); net.mode='solo'; players.length=0; players.push(makePlayer(0,'P1',null,true));
   resetGame(); setPhase(PHASE.MENU);
 });
+
+/* voice + chat buttons */
 document.getElementById('btnVoice').addEventListener('click', toggleVoice);
 document.getElementById('btnChat').addEventListener('click', ()=>{
   const open = !isChatOpen();
@@ -1678,21 +1823,33 @@ document.getElementById('btnPause').addEventListener('click', ()=>{
   if(phase===PHASE.PLAYING) setPhase(PHASE.PAUSED);
   else if(phase===PHASE.PAUSED) setPhase(PHASE.PLAYING);
 });
+
+/* chat input */
 document.getElementById('chatSend').addEventListener('click', ()=>{
-  const el=document.getElementById('chatInput');
-  sendChat(el.value); el.value=''; el.focus();
+  const el = document.getElementById('chatInput');
+  sendChat(el.value);
+  el.value='';
+  el.focus();
 });
 document.getElementById('chatInput').addEventListener('keydown', e=>{
-  if(e.key==='Enter'){ e.preventDefault(); const el=e.target; sendChat(el.value); el.value=''; }
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const el = e.target;
+    sendChat(el.value);
+    el.value='';
+  }
 });
+
+/* global keyboard: T to chat, ESC to pause */
 window.addEventListener('keydown', e=>{
   if(typing()) return;
   if(e.code==='KeyT' && phase===PHASE.PLAYING){
-    e.preventDefault(); openChat(true);
+    e.preventDefault();
+    openChat(true);
     setTimeout(()=>document.getElementById('chatInput').focus(), 30);
   }
   if(e.code==='Escape'){
-    if(typing()){ document.activeElement.blur(); return; }
+    if(typing()) { document.activeElement.blur(); return; }
     if(phase===PHASE.PLAYING) setPhase(PHASE.PAUSED);
     else if(phase===PHASE.PAUSED) setPhase(PHASE.PLAYING);
   }
@@ -1703,9 +1860,13 @@ window.addEventListener('keydown', e=>{
         try{ if(g.conn && g.conn.open) g.conn.send({t:'welcome', playerId:g.playerId, seed, players:serializePlayerList(), hostName:localName}); }catch(e){}
       }
       genWorld(seed);
-    } else { resetGame(); }
+    } else {
+      resetGame();
+    }
   }
 });
+
+/* name persistence */
 try{
   const saved = localStorage.getItem('99n_name');
   if(saved) document.getElementById('nameInput').value = saved;
@@ -1713,12 +1874,14 @@ try{
 document.getElementById('nameInput').addEventListener('change', (e)=>{
   try{ localStorage.setItem('99n_name', e.target.value); }catch(_){}
 });
+
 window.addEventListener('beforeunload', ()=>{ cleanupPeer(); });
 
 /* =========================================================
    MAIN LOOP
    ========================================================= */
 let last = performance.now();
+
 function sendGuestInput(){
   if(net.mode!=='guest' || !net.dc || !net.dc.open) return;
   const nowMs = performance.now();
@@ -1731,20 +1894,37 @@ function sendGuestInput(){
   if(touch.actionJustPressed) k.__act = true;
   try{ net.dc.send({ t:'in', k }); }catch(e){}
 }
+
 function tick(dt){
-  if(phase!==PHASE.PLAYING && phase!==PHASE.PAUSED) return;
-  if(phase===PHASE.PAUSED){ now += dt*0.15; return; }
+  if(phase!==PHASE.PLAYING && phase!==PHASE.PAUSED) {
+    // still allow menu animation
+    return;
+  }
+  if(phase===PHASE.PAUSED){
+    // freeze but keep rendering
+    now += dt*0.15; // subtle time for fire flicker
+    return;
+  }
+
   if(net.mode==='guest'){
     sendGuestInput();
+    // guest: extrapolate animations only
     now += dt;
     if(msgTimer>0) msgTimer -= dt;
     return;
   }
+
+  // host / solo: full simulation
   simulate(dt);
   touch.actionJustPressed = false;
+
   if(net.mode==='host'){
     const t = performance.now();
-    if(t - net.lastStateT > 50){ net.lastStateT=t; sendHostState(); }
+    if(t - net.lastStateT > 50){
+      net.lastStateT = t;
+      sendHostState();
+    }
+    // try voice mesh updates occasionally
     if(net.voiceEnabled){
       if(!net._voiceTick || performance.now() - net._voiceTick > 3000){
         net._voiceTick = performance.now();
@@ -1755,6 +1935,7 @@ function tick(dt){
     }
   }
 }
+
 function frame(t){
   const dt = Math.min(0.05, (t-last)/1000);
   last = t;
@@ -1764,6 +1945,8 @@ function frame(t){
   for(const k in pressed) delete pressed[k];
   requestAnimationFrame(frame);
 }
+
+/* ---------------- boot ---------------- */
 players.push(makePlayer(0,'P1', null, true));
 players.push(makePlayer(1,'P2', null, false));
 genWorld((Math.random()*2**31)|0);
